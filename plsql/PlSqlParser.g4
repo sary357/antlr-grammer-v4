@@ -958,13 +958,17 @@ table_ref
     ;
 
 table_ref_aux
-    : table_ref_aux_internal+ flashback_query_clause* (/*{isTableAlias()}?*/ table_alias)?
+    : table_ref_aux_internal (table_alias)?
+    | table_ref_aux_internal+ flashback_query_clause* (table_alias)?
     ;
+//table_ref_aux
+//    : table_ref_aux_internal+  (table_alias)?
+//    ;
 
 table_ref_aux_internal
     :  dml_table_expression_clause (pivot_clause | unpivot_clause)?                # table_ref_aux_internal_one
     | '(' table_ref subquery_operation_part* ')' (pivot_clause | unpivot_clause)?  # table_ref_aux_internal_two
-    | ONLY '(' dml_table_expression_clause ')'                                     # table_ref_aux_internal_three
+    | ONLY '(' dml_table_expression_clause ')'                                     # table_ref_aux_internal_thre
     ;
 
 join_clause
