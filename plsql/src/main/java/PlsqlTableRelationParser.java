@@ -24,6 +24,8 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     public static final String SOURCE="source"; // source
     private Stack<String> tableStack=new Stack<String>();
     private Stack<String> statusStack=new Stack<String>();
+    
+    //private boolean isDelete=false;
     public PlsqlTableRelationParser(PlSqlParser parser){
         this.parser=parser;
        // useful=false;
@@ -35,7 +37,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
        
     }
 
-    @Override public void exitSql_statement(@NotNull PlSqlParser.Sql_statementContext ctx) { 
+    @Override public void exitInsert_statement(@NotNull PlSqlParser.Insert_statementContext ctx) { 
         boolean sourceExist=false;
         boolean destinationExist=false;
         
@@ -47,16 +49,37 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
                     destinationExist=true;
             }
             if(sourceExist && destinationExist){
-                System.out.println("----------------------------------------------------");
+                System.out.println("------------------- Insert --------------------------");
                 while(tableStack.size()>0)
                     System.out.println(tableStack.pop());
-                System.out.println("----------------------------------------------------");
+                System.out.println("-----------------------------------------------------");
             }else
                 while(tableStack.size()>0)
                     tableStack.pop();
         }
     }
     
+    @Override public void exitDelete_statement(@NotNull PlSqlParser.Delete_statementContext ctx) { 
+        boolean sourceExist=false;
+        boolean destinationExist=false;
+       // isDelete=false;
+        if(tableStack.size()>0){
+            for(String s: tableStack){
+                if(s.indexOf(SOURCE)>=0)
+                    sourceExist=true;
+                if(s.indexOf(DESTINATION)>=0)
+                    destinationExist=true;
+            }
+            if(sourceExist && destinationExist){
+                System.out.println("------------------- Delete --------------------------");
+                while(tableStack.size()>0)
+                    System.out.println(tableStack.pop());
+                System.out.println("-----------------------------------------------------");
+            }else
+                while(tableStack.size()>0)
+                    tableStack.pop();
+        }
+    }
     
     
     @Override public void enterInsert_into_clause(@NotNull PlSqlParser.Insert_into_clauseContext ctx) { 
@@ -78,6 +101,23 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     @Override public void enterFrom_clause(@NotNull PlSqlParser.From_clauseContext ctx) { 
         statusStack.push(SOURCE);
     }
+    
+    @Override public void enterDelete_statement(@NotNull PlSqlParser.Delete_statementContext ctx) { 
+        int length=ctx.getChildCount();
+        for(int i=0; i<length; i++){
+            if(ctx.getChild(i).getClass().getName().equalsIgnoreCase("PlSqlParser$General_table_refContext")){
+                
+                for(int j=0; j< ctx.getChild(i).getChildCount(); j++){
+               //     System.out.println(ctx.getChild(i).getChild(j).getClass().getName());
+               //     System.out.println(ctx.getChild(i).getChild(j).getText());
+                    if(ctx.getChild(i).getChild(j).getClass().getName().equalsIgnoreCase("PlSqlParser$Dml_table_expression_clauseContext")){
+                       // tableStack.push(DESTINATION+":"+ctx.getChild(i).getChild(j).getText());
+                        statusStack.push(DESTINATION);
+                    }
+                }
+            }              
+        }
+    }
     /**
      * {@inheritDoc}
      *
@@ -89,7 +129,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     
     @Override public void enterTableview_name(@NotNull PlSqlParser.Tableview_nameContext ctx) { 
         if(statusStack.size()>0 && ctx.getText().length()>3){
-            if(statusStack.get(0).equals(DESTINATION) ){
+            if(statusStack.get((statusStack.size()-1)).indexOf(DESTINATION)>=0 ){
                 tableStack.push(DESTINATION+":"+ctx.getText());
                 //System.out.println("Destination Table:" + ctx.getText());
             }else {
