@@ -20,8 +20,8 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
   //  private boolean tableScope;
    // private boolean noNeedToDecideAlias;
    // private String tableName;
-    public static final String DESTINATION="destination"; // destination
-    public static final String SOURCE="source"; // source
+    public static final String DESTINATION="[destination:insert][delete target:delete"; // destination
+    public static final String SOURCE="[source:insert][delete source table:delete]"; // source
     private Stack<String> tableStack=new Stack<String>();
     private Stack<String> statusStack=new Stack<String>();
     
