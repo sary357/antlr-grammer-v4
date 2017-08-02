@@ -1520,7 +1520,8 @@ quantified_expression
 
 string_function
     : SUBSTR '(' expression COMMA expression (COMMA expression)? ')'
-    | TO_CHAR '(' (table_element|standard_function) (COMMA quoted_string)? ')'     
+    | TO_CHAR '(' (table_element|standard_function|expression) (numeric)* (COMMA quoted_string)? ')'     
+ //   | TO_CHAR '(' (table_element|standard_function|expression) ((SOLIDUS|PLUS_SIGN|MINUS_SIGN|ASTERISK) (numeric))* (COMMA quoted_string)? ')'  
     | DECODE '(' expression (COMMA expression)*  ')'
     | CHR '(' concatenation USING NCHAR_CS ')'
     | NVL '(' expression COMMA expression ')'
@@ -1543,7 +1544,7 @@ numeric_function
    | ROUND '(' expression (COMMA UNSIGNED_INTEGER)?  ')'
    | AVG '(' (DISTINCT | ALL)? expression ')'
    | MAX '(' (DISTINCT | ALL)? expression ')'
-   // | '(' ( numeric| general_element ) ((SOLIDUS|PLUS_SIGN|MINUS_SIGN|ASTERISK) ( numeric| general_element ))? ')'
+  // | '(' ( numeric| general_element ) ((SOLIDUS|PLUS_SIGN|MINUS_SIGN|ASTERISK) ( numeric| general_element ))? ')'
    ;
 
 other_function
@@ -1585,7 +1586,7 @@ other_function
     | XMLTABLE
       '(' xml_namespaces_clause? concatenation xml_passing_clause? (COLUMNS xml_table_column (',' xml_table_column))? ')' ('.' general_element_part)?
     | ADD_MONTHS 
-      '(' other_function ',' (MINUS_INTEGER | UNSIGNED_INTEGER) ')'
+      '(' (other_function)  COMMA (MINUS_INTEGER | UNSIGNED_INTEGER) ')'
     | SYSDATE 
     | LAST_DAY '(' (general_element | TO_DATE)+ ')'
     | TO_DATE '(' (general_element | SYSDATE) COMMA quoted_string ')'
