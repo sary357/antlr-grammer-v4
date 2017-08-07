@@ -5,7 +5,10 @@
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.NotNull;
 import org.antlr.v4.runtime.tree.*;
+
+import java.io.BufferedReader;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,8 +23,8 @@ import java.util.Stack;
 public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     private PlSqlParser parser;
   
-    public static final String DESTINATION="[destination:insert][delete target:delete][update target table:update]"; // destination
-    public static final String SOURCE="[source:insert][delete source table:delete][update source table: update]"; // source
+    public static final String DESTINATION="[destination:insert][delete target:delete][update target table:update][merge into destination table: merge]"; // destination
+    public static final String SOURCE="[source:insert][delete source table:delete][update source table: update][merge source table: merge]"; // source
     private Stack<String> tableStack=new Stack<String>();
     private Stack<String> statusStack=new Stack<String>();
     private boolean isInCursorDeclaration=false;
@@ -30,10 +33,60 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     private Map<String,List<String>> cursorQueryTable=new HashMap<String, List<String>>(); // key=cursor_name, value=table1,table2,...,etc
     private String tempCursorName=null;
     private Set<String> processingCursorNames=new HashSet<String>();
-    public PlsqlTableRelationParser(PlSqlParser parser){
-        this.parser=parser;
-    }   
+    private Map<String, Set<String>> tableList=null; // key: owner.table  value(a set): column
+    private Set<String> tableList2=new HashSet<String>();
+    private boolean initialized=false;
+//    public PlsqlTableRelationParser(PlSqlParser parser){
+//        this.parser=parser;
+//    }   
     
+    public PlsqlTableRelationParser(PlSqlParser parser, String[] fileName){
+        this.parser=parser;
+        this.ingestTableList(fileName);
+    }  
+    
+    private void ingestTableList(String[] fileName){
+        // format: owner_name,table_name,column_name
+        String line;
+        BufferedReader in;
+        tableList=new HashMap<String, Set<String>>();
+        Set<String> tmpSet;
+        String tableName;
+        String columnName;
+        try{
+            for(String f: fileName){
+                System.out.println("Read content from file: "+f);
+                in = new BufferedReader(new FileReader(f));
+                while((line=in.readLine()) != null)
+                {
+                      // System.out.println(line);
+                       String[] tmpStrArr=line.split(",");
+                       if(tmpStrArr.length==3){
+                           tableName=tmpStrArr[0].trim().toUpperCase()+"."+tmpStrArr[1].trim().toUpperCase();
+                           columnName=tmpStrArr[2];
+                           tableList2.add(tmpStrArr[1].trim().toUpperCase());
+                           tmpSet=tableList.get(tableName);
+                           if(tmpSet==null){
+                               tmpSet=new HashSet<String>();                             
+                           }
+                           tmpSet.add(columnName);
+                           tableList.put(tableName, tmpSet);
+                           
+                       }                       
+                }
+               // System.out.println(line);
+            }
+            initialized=true;
+        }catch(Exception e){
+            e.printStackTrace();          
+            initialized=false;
+        }
+       
+    }
+    
+    public boolean isInitialized(){
+        return this.initialized;
+    }
     private void printStackInfo(String sqlType){
         boolean sourceExist=false;
         boolean destinationExist=false;
@@ -64,8 +117,6 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
             }else
                 tableStack.clear();
         }
-        
-       
     }
     
     @Override public void enterCursor_declaration(@NotNull PlSqlParser.Cursor_declarationContext ctx) { 
@@ -94,9 +145,9 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     
     @Override public void enterStatement(@NotNull PlSqlParser.StatementContext ctx) { 
         if(!inLoop){
-        tableStack.clear();
-        statusStack.clear();     
-        processingCursorNames.clear();
+            tableStack.clear();
+            statusStack.clear();     
+            processingCursorNames.clear();
         }
     }
     
@@ -179,14 +230,23 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     }
     
     @Override public void enterTableview_name(@NotNull PlSqlParser.Tableview_nameContext ctx) { 
+        String tableName;
         
         if(statusStack.size()>0 && ctx.getText().length()>3){
             if(statusStack.get((statusStack.size()-1)).indexOf(DESTINATION)>=0 ){
-                tableStack.push(DESTINATION+":"+ctx.getText());
-                //System.out.println("Destination Table:" + ctx.getText());
+                
+                
+                tableName=ctx.getText();
+                if(tableList.containsKey(tableName.toUpperCase()) || tableList2.contains(tableName.toUpperCase())){
+                    tableStack.push(DESTINATION+":"+ctx.getText());
+                    //System.out.println("Destination Table:" + ctx.getText());
+                }
             }else {
-               
-                tableStack.push(SOURCE+":"+ctx.getText());
+                tableName=ctx.getText();
+                if(tableList.containsKey(tableName.toUpperCase())  || tableList2.contains(tableName.toUpperCase())){
+                    tableStack.push(SOURCE+":"+ctx.getText());
+                    //System.out.println("Source Table:" + ctx.getText());
+                }
                 if(isInCursorDeclaration){
                     List<String> tmpList=cursorQueryTable.get(this.tempCursorName);
                     if(tmpList==null || tmpList.isEmpty())
@@ -219,13 +279,38 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
         processingCursorNames.clear();
         inLoop=false;
     }
+    
+    @Override public void enterMerge_statement(@NotNull PlSqlParser.Merge_statementContext ctx) {    
+        tableStack.clear();
+        statusStack.clear();     
+               
+       // ctx.getChild(i)
+       
+        statusStack.push(DESTINATION);
+        
+    }
+    
+    @Override public void exitMerge_statement(@NotNull PlSqlParser.Merge_statementContext ctx) {
+        this.printStackInfo("Merge");    
+    }
+    
 	/**
 	 * @param args
 	 */
 	@SuppressWarnings("deprecation")
 	public static void main(String[] args) throws Exception{
-		// TODO Auto-generated method stub
+	    if(args.length<2){
+	        System.err.println("Missing necessary arguments \n");
+	        System.out.println("Parameters:java PlsqlTableRelationParser SQL_FILE TABLE_LIST_FILE1 TABLE_LIST_FILE2 ");
+	        System.out.println("The format of TABLE_LIST_FILEx: OWNER_NAME,TABLE_NAME|VIEW_NAME,COLUMN_NAME ");
+	        System.out.println("                            eg: ABC_REPL,CARDTYPE,YYYYMM");
+	        System.exit(1);;
+	    }
+	        
 		String inputFile=args[0];//"D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/c1.sql";
+		String [] tableList=new String[args.length-1];
+		for(int i=1; i<args.length; i++)
+		    tableList[i-1]=args[i];
 		InputStream is = new FileInputStream(inputFile);
 		ANTLRInputStream input = new ANTLRInputStream(is);
 		PlSqlLexer lexer=new PlSqlLexer(input);
@@ -234,9 +319,11 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
 		ParseTree tree=parser.compilation_unit();
 		
 		ParseTreeWalker walker=new ParseTreeWalker();
-		PlsqlTableRelationParser extracter=new PlsqlTableRelationParser(parser);
+		PlsqlTableRelationParser extracter=new PlsqlTableRelationParser(parser, tableList);
 		System.out.println();
+		
 		walker.walk(extracter, tree);
+		
 		//System.out.println("-----------------------------");
 		//System.out.println(tree.toStringTree(parser));
 	}
