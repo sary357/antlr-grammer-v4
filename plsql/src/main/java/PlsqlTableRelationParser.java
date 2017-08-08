@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import org.neo4j.driver.v1.*;
+import static org.neo4j.driver.v1.Values.parameters;
 /**
  *
  */
@@ -36,12 +38,19 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     private Map<String, Set<String>> tableList=null; // key: owner.table  value(a set): column
     private Set<String> tableList2=new HashSet<String>();
     private boolean initialized=false;
+    
+    private String neo4jHost;
+    private String neo4jUsername;
+    private String neo4jPassword;
 //    public PlsqlTableRelationParser(PlSqlParser parser){
 //        this.parser=parser;
 //    }   
     
-    public PlsqlTableRelationParser(PlSqlParser parser, String[] fileName){
+    public PlsqlTableRelationParser(PlSqlParser parser, String host, String username, String password, String[] fileName){
         this.parser=parser;
+        this.neo4jUsername=username;
+        this.neo4jHost=host;
+        this.neo4jPassword=password;
         this.ingestTableList(fileName);
     }  
     
@@ -56,6 +65,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
         try{
             for(String f: fileName){
                 System.out.println("Read content from file: "+f);
+                
                 in = new BufferedReader(new FileReader(f));
                 while((line=in.readLine()) != null)
                 {
@@ -91,7 +101,9 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
         boolean sourceExist=false;
         boolean destinationExist=false;
         List<String> tmpList;
-       
+        Set<String> upperStreamTableName=new HashSet<String>();
+        String downStreamTableName=null;//=new HashSet<String>();
+        String tmpStr;
         if(tableStack.size()>0){
             for(String s: tableStack){
                 if(s.indexOf(SOURCE)>=0)
@@ -103,20 +115,65 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
                 
                 System.out.println("------------------- "+sqlType+ " --------------------------");
                 // print the part in SQL
-                while(tableStack.size()>0)
-                    System.out.println(tableStack.pop());
+                while(tableStack.size()>0){
+                    tmpStr=tableStack.pop();
+                   
+                    System.out.println(tmpStr);
+                    if(tmpStr.startsWith(SOURCE))
+                        upperStreamTableName.add(tmpStr.replace(SOURCE+":", ""));
+                    else
+                        downStreamTableName=tmpStr.replace(DESTINATION+":", "");
+                }
+                
                 
                 // print the part in cursor
                 for(String s: processingCursorNames){
                     tmpList=cursorQueryTable.get(s);
-                    for(String t: tmpList)
+                    for(String t: tmpList){
+                        
                         System.out.println(SOURCE+"[CURSOR]:"+t);
+                        upperStreamTableName.add(t);
+                    }
                 }
                    // System.out.println(SOURCE+":"+cursorQueryTable.get(s));
+                
+                System.out.println("--------------------- for Neo4j String ----------------------");
+                if(downStreamTableName!=null){
+                    System.out.println("merge (t:Table {Name:\""+downStreamTableName+"\"}) return t;");
+                    this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+downStreamTableName+"\"})");
+                    for(String s: upperStreamTableName){
+                        System.out.println("merge (t:Table {Name:\""+s+"\"}) return t;");
+                        System.out.println("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
+                        
+                        this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+s+"\"})");
+                        this.ingestDataIntoNeo4j("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
+                    }
+                    System.out.println("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
+                    this.ingestDataIntoNeo4j("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
+                    System.out.println("match (t1:Table)-[r]-(t2:Table) return t1,r,t2;");
+                }
                 System.out.println("-----------------------------------------------------");
             }else
                 tableStack.clear();
         }
+    }
+    
+    private void ingestDataIntoNeo4j(final String data){
+        Driver driver = GraphDatabase.driver( this.neo4jHost, AuthTokens.basic( this.neo4jUsername, this.neo4jPassword ) );
+        try ( Session session = driver.session() )
+        {
+            String greeting = session.writeTransaction( new TransactionWork<String>()
+            {
+                @Override
+                public String execute( Transaction tx )
+                {
+                    StatementResult result = tx.run(data );
+                    return "";//result.single().get( 0 ).asString();
+                }
+            } );
+            
+        }
+        driver.close();
     }
     
     @Override public void enterCursor_declaration(@NotNull PlSqlParser.Cursor_declarationContext ctx) { 
@@ -299,18 +356,19 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
 	 */
 	@SuppressWarnings("deprecation")
 	public static void main(String[] args) throws Exception{
-	    if(args.length<2){
+	    if(args.length<5){
 	        System.err.println("Missing necessary arguments \n");
-	        System.out.println("Parameters:java PlsqlTableRelationParser SQL_FILE TABLE_LIST_FILE1 TABLE_LIST_FILE2 ");
+	        System.out.println("Parameters:java PlsqlTableRelationParser  NEO4J_HOST NEO4J_USERNAME NEO4J_PASSWORD SQL_FILE TABLE_LIST_FILE1 TABLE_LIST_FILE2 ");
 	        System.out.println("The format of TABLE_LIST_FILEx: OWNER_NAME,TABLE_NAME|VIEW_NAME,COLUMN_NAME ");
 	        System.out.println("                            eg: ABC_REPL,CARDTYPE,YYYYMM");
 	        System.exit(1);;
 	    }
 	        
-		String inputFile=args[0];//"D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/c1.sql";
-		String [] tableList=new String[args.length-1];
-		for(int i=1; i<args.length; i++)
-		    tableList[i-1]=args[i];
+		String inputFile=args[3];//"D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/c1.sql";
+		String [] tableList=new String[args.length-4];
+		for(int i=4; i<args.length; i++)
+		    if(args[i]!=null)
+		        tableList[i-4]=args[i];
 		InputStream is = new FileInputStream(inputFile);
 		ANTLRInputStream input = new ANTLRInputStream(is);
 		PlSqlLexer lexer=new PlSqlLexer(input);
@@ -319,7 +377,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
 		ParseTree tree=parser.compilation_unit();
 		
 		ParseTreeWalker walker=new ParseTreeWalker();
-		PlsqlTableRelationParser extracter=new PlsqlTableRelationParser(parser, tableList);
+		PlsqlTableRelationParser extracter=new PlsqlTableRelationParser(parser,args[0], args[1], args[2], tableList);
 		System.out.println();
 		
 		walker.walk(extracter, tree);
