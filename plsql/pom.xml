@@ -4,6 +4,12 @@
 	<artifactId>plsql</artifactId>
 	<packaging>jar</packaging>
 	<name>PL/SQL grammar</name>
+    
+    <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>1.7</maven.compiler.source>
+    <maven.compiler.target>1.7</maven.compiler.target>
+  </properties>
 	<parent>
 		<groupId>com.antlr.grammarsv4</groupId>
 		<artifactId>grammarsv4</artifactId>
@@ -39,12 +45,12 @@
 				<version>${antlr4test-maven-plugin.version}</version>
 				<configuration>
 				<verbose>false</verbose>
-					<showTree>true</showTree>
+					<showTree>false</showTree>
 					<entryPoint>compilation_unit</entryPoint>
 					<grammarName>PlSql</grammarName>
 					<caseInsensitiveType>UPPER</caseInsensitiveType>
 					<packageName></packageName>
-					<exampleFiles>fubon/</exampleFiles>
+					<exampleFiles>examples/</exampleFiles>
 				</configuration>
 				<executions>
 					<execution>
@@ -58,18 +64,43 @@
 							<goal>test</goal>
 						</goals>
 						<configuration>
-							<verbose>false</verbose>
+							<verbose>true</verbose>
 							<showTree>false</showTree>
-							<!-- <entryPoint>sql_script</entryPoint> -->
-							<entryPont>compilation_unit</entryPont>
+							<entryPoint>sql_script</entryPoint> 
+							<!-- <entryPont>compilation_unit</entryPont> -->
 							<grammarName>PlSql</grammarName>
 							<caseInsensitiveType>UPPER</caseInsensitiveType>
 							<packageName></packageName>
-							<exampleFiles>fubon/</exampleFiles>
+							<exampleFiles>examples/</exampleFiles>
 						</configuration>
 					</execution>
 				</executions>
 			</plugin>
+            
+            
+<plugin>
+  <artifactId>maven-assembly-plugin</artifactId>
+  <configuration>
+    <archive>
+      <manifest>
+        <mainClass>PlsqlTableRelationParser</mainClass>
+      </manifest>
+    </archive>
+    <descriptorRefs>
+      <descriptorRef>jar-with-dependencies</descriptorRef>
+    </descriptorRefs>
+  </configuration>
+  <executions>
+    <execution>
+      <id>make-assembly</id> <!-- this is used for inheritance merges -->
+      <phase>package</phase> <!-- bind to the packaging phase -->
+      <goals>
+        <goal>single</goal>
+      </goals>
+    </execution>
+  </executions>
+</plugin>
+
 		</plugins>
 	</build>
     <dependencies>

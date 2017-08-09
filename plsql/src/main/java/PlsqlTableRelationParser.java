@@ -137,22 +137,23 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
                 }
                    // System.out.println(SOURCE+":"+cursorQueryTable.get(s));
                 
-                System.out.println("--------------------- for Neo4j String ----------------------");
+                //System.out.println("-------------------------------------------");
                 if(downStreamTableName!=null){
-                    System.out.println("merge (t:Table {Name:\""+downStreamTableName+"\"}) return t;");
+                    //System.out.println("merge (t:Table {Name:\""+downStreamTableName+"\"}) return t;");
                     this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+downStreamTableName+"\"})");
                     for(String s: upperStreamTableName){
-                        System.out.println("merge (t:Table {Name:\""+s+"\"}) return t;");
-                        System.out.println("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
+                       // System.out.println("merge (t:Table {Name:\""+s+"\"}) return t;");
+                       // System.out.println("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
                         
                         this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+s+"\"})");
                         this.ingestDataIntoNeo4j("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
                     }
-                    System.out.println("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
+                   // System.out.println("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
                     this.ingestDataIntoNeo4j("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
-                    System.out.println("match (t1:Table)-[r]-(t2:Table) return t1,r,t2;");
+                  //  System.out.println("match (t1:Table)-[r]-(t2:Table) return t1,r,t2;");
                 }
-                System.out.println("-----------------------------------------------------");
+                System.out.println("----------------- Data have been ingested by neo4j ---------------------------");
+                
             }else
                 tableStack.clear();
         }
