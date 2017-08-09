@@ -1,4 +1,5 @@
 # 先前準備
+- 安裝 Java SDK 1.7 或更高版本, 64 bits 的 windows 環境中測試過, 但尚未測試 32 bits 的 windows 環境
 - 安裝 neo4j (安裝 community version 即可)
     - 請先從 https://neo4j.com/ 下載最新的 neo4j
     - 開啟 neo4j server 並登入: 開啟 neo4j 之後, 請用瀏覽器打開 http://127.0.0.1:7474/, 預設帳號密碼都是 neo4j, 第一次登入會要求重新設定密碼
