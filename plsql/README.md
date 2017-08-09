@@ -62,7 +62,13 @@ Read content from file: D:/fuming.Tsai/Documents/Tools/PortableGit/projects/gram
 A - downstream -> B: 代表從 Table A 出來的資料會影響 Table B, 也代表 Table B 的資料會被 Table A 的資料所影響
 C - upstream -> D:  代表從 Table D 出來的資料會影響 table C, 也代表 Table C 的資料會被 Table D 的資料所影響
 ```
-3. downstream 和 upstream 定義剛好相反, 理論上要成對出現, 如果沒有成對出現, 請跟我說
+3. 為避免跑完多次解析之後, 圖會變成不容易解讀, 建議每隔幾次或是每一次就要刪除所有節點, 以下是CQL用法
+```
+1. 查詢所有節點: match (t) return t
+2. 刪除所有關係: match (t)-[r]-(q) delete r
+3. 刪除所有節點: match (t) delete t
+```
+4. downstream 和 upstream 定義剛好相反, 理論上要成對出現, 如果沒有成對出現, 請跟我說
 
 ## On linux
 ### TBD
