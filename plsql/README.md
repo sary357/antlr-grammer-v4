@@ -4,7 +4,7 @@
     - 請先從 https://neo4j.com/ 下載最新的 neo4j
     - 開啟 neo4j server 並登入: 開啟 neo4j 之後, 請用瀏覽器打開 http://127.0.0.1:7474/, 預設帳號密碼都是 neo4j, 第一次登入會要求重新設定密碼
 - 準備要處理的 PLSQL 檔案
-- 準備 TABLE_OWNER+TABLE_NAME定義檔, 該檔案有三個欄位, 第一個欄位為table owner, 第二個為table name, 第三個欄位是欄位名稱, 範例如下
+- 準備 TABLE_OWNER+TABLE_NAME定義檔, 該檔案有三個欄位, 第一個欄位為table owner, 第二個為table name, 第三個欄位是欄位名稱, 欄位用逗號分隔, 範例如下
 ```
 ABC_REPL,CARDTYPE,CARDTYPE
 ABC_REPL,CARDTYPE,CARDTYPE1
@@ -24,7 +24,7 @@ $ set CLASSPATH="plsqltableparser.jar的絕對路徑";"antlr4-runtime-4.7.jar的
 $ set CLASSPATH=D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\antlr4-runtime-4.7.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\hamcrest-core-1.3.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\neo4j-java-driver-1.4.2.jar
 ```
 ### 執行解析
-- 執行 PlsqlTableRelationParser 解析 
+- 執行 PlsqlTableRelationParser 解析 (請注意 TABLE_OWNER+TABLE_NAME定義檔 理論上可以無限個)
 ```
 $ java PlsqlTableRelationParser NEO4J主機(長相為 bolt://127.0.0.1:PORT) NEO4J帳號 NEO4j密碼 需要處理的PL/SQL檔案絕對路徑 TABLE_OWNER+TABLE_NAME定義檔1 TABLE_OWNER+TABLE_NAME定義檔2 TABLE_OWNER+TABLE_NAME定義檔3 TABLE_OWNER+TABLE_NAME定義檔4 ... TABLE_OWNER+TABLE_NAME定義檔n
 ```
@@ -72,3 +72,6 @@ C - upstream -> D:  代表從 Table D 出來的資料會影響 table C, 也代�
 
 ## On linux
 ### TBD
+
+# References
+1. CQL: https://neo4j.com/developer/cypher-query-language/
