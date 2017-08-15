@@ -23,7 +23,7 @@ import static org.neo4j.driver.v1.Values.parameters;
  * after executing this class, you will get the relationship between tables in Neo4j. However, the relationship between column and tables will not exist in this class.
  * 
  */
-public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
+public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
     private PlSqlParser parser;
   
     public static final String DESTINATION="[destination:insert][delete target:delete][update target table:update][merge into destination table: merge]"; // destination
@@ -38,7 +38,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     private Set<String> processingCursorNames=new HashSet<String>();
     private Map<String, Set<String>> tableList=null; // key: owner.table  value(a set): column
     private Set<String> tableList2=new HashSet<String>(); // table name only
-    private boolean initialized=false;
+    //private boolean initialized=false;
     
     private String neo4jHost;
     private String neo4jUsername;
@@ -49,15 +49,15 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
 //        this.parser=parser;
 //    }   
     
-    public PlsqlTableRelationParser(PlSqlParser parser, String host, String username, String password, String[] fileName){
+    public PlsqlColumnTableRelationParser(PlSqlParser parser, String host, String username, String password, String[] fileName){
         this.parser=parser;
         this.neo4jUsername=username;
         this.neo4jHost=host;
         this.neo4jPassword=password;
-        this.ingestTableList(fileName);
+        this.ingestTableDefinitionList(fileName);
     }  
     
-    private void ingestTableList(String[] fileName){
+    private void ingestTableDefinitionList(String[] fileName){
         // format: owner_name,table_name,column_name
         String line;
         BufferedReader in;
@@ -89,96 +89,96 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
                 }
                // System.out.println(line);
             }
-            initialized=true;
+           // initialized=true;
         }catch(Exception e){
             e.printStackTrace();          
-            initialized=false;
+          //  initialized=false;
         }
        
     }
     
-    public boolean isInitialized(){
-        return this.initialized;
-    }
-    private void printStackInfo(String sqlType){
-        boolean sourceExist=false;
-        boolean destinationExist=false;
-        List<String> tmpList;
-        Set<String> upperStreamTableName=new HashSet<String>();
-        String downStreamTableName=null;//=new HashSet<String>();
-        String tmpStr;
-        if(tableStack.size()>0){
-            for(String s: tableStack){
-                if(s.indexOf(SOURCE)>=0)
-                    sourceExist=true;
-                if(s.indexOf(DESTINATION)>=0)
-                    destinationExist=true;
-            }
-            if(sourceExist && destinationExist){
-                
-                System.out.println("------------------- "+sqlType+ " --------------------------");
-                // print the part in SQL
-                while(tableStack.size()>0){
-                    tmpStr=tableStack.pop();
-                   
-                    System.out.println(tmpStr);
-                    if(tmpStr.startsWith(SOURCE))
-                        upperStreamTableName.add(tmpStr.replace(SOURCE+":", ""));
-                    else
-                        downStreamTableName=tmpStr.replace(DESTINATION+":", "");
-                }
-                
-                
-                // print the part in cursor
-                for(String s: processingCursorNames){
-                    tmpList=cursorQueryTable.get(s);
-                    for(String t: tmpList){
-                        
-                        System.out.println(SOURCE+"[CURSOR]:"+t);
-                        upperStreamTableName.add(t);
-                    }
-                }
-                   // System.out.println(SOURCE+":"+cursorQueryTable.get(s));
-                
-                //System.out.println("-------------------------------------------");
-                if(downStreamTableName!=null){
-                    //System.out.println("merge (t:Table {Name:\""+downStreamTableName+"\"}) return t;");
-                    this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+downStreamTableName+"\"})");
-                    for(String s: upperStreamTableName){
-                       // System.out.println("merge (t:Table {Name:\""+s+"\"}) return t;");
-                       // System.out.println("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
-                        
-                        this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+s+"\"})");
-                        this.ingestDataIntoNeo4j("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
-                    }
-                   // System.out.println("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
-                    this.ingestDataIntoNeo4j("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
-                  //  System.out.println("match (t1:Table)-[r]-(t2:Table) return t1,r,t2;");
-                }
-                System.out.println("----------------- Data have been ingested by neo4j ---------------------------");
-                
-            }else
-                tableStack.clear();
-        }
-    }
+//    public boolean isInitialized(){
+//        return this.initialized;
+//    }
+//    private void printStackInfo(String sqlType){
+//        boolean sourceExist=false;
+//        boolean destinationExist=false;
+//        List<String> tmpList;
+//        Set<String> upperStreamTableName=new HashSet<String>();
+//        String downStreamTableName=null;//=new HashSet<String>();
+//        String tmpStr;
+//        if(tableStack.size()>0){
+//            for(String s: tableStack){
+//                if(s.indexOf(SOURCE)>=0)
+//                    sourceExist=true;
+//                if(s.indexOf(DESTINATION)>=0)
+//                    destinationExist=true;
+//            }
+//            if(sourceExist && destinationExist){
+//                
+//                System.out.println("------------------- "+sqlType+ " --------------------------");
+//                // print the part in SQL
+//                while(tableStack.size()>0){
+//                    tmpStr=tableStack.pop();
+//                   
+//                    System.out.println(tmpStr);
+//                    if(tmpStr.startsWith(SOURCE))
+//                        upperStreamTableName.add(tmpStr.replace(SOURCE+":", ""));
+//                    else
+//                        downStreamTableName=tmpStr.replace(DESTINATION+":", "");
+//                }
+//                
+//                
+//                // print the part in cursor
+//                for(String s: processingCursorNames){
+//                    tmpList=cursorQueryTable.get(s);
+//                    for(String t: tmpList){
+//                        
+//                        System.out.println(SOURCE+"[CURSOR]:"+t);
+//                        upperStreamTableName.add(t);
+//                    }
+//                }
+//                   // System.out.println(SOURCE+":"+cursorQueryTable.get(s));
+//                
+//                //System.out.println("-------------------------------------------");
+//                if(downStreamTableName!=null){
+//                    System.out.println("merge (t:Table {Name:\""+downStreamTableName+"\"}) return t;");
+//                    //this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+downStreamTableName+"\"})");
+//                    for(String s: upperStreamTableName){
+//                        System.out.println("merge (t:Table {Name:\""+s+"\"}) return t;");
+//                        System.out.println("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
+//                        
+//                        //this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+s+"\"})");
+//                        //this.ingestDataIntoNeo4j("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
+//                    }
+//                    System.out.println("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
+//                    //this.ingestDataIntoNeo4j("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
+//                    System.out.println("match (t1:Table)-[r]-(t2:Table) return t1,r,t2;");
+//                }
+//                System.out.println("----------------- Data have been ingested by neo4j ---------------------------");
+//                
+//            }else
+//                tableStack.clear();
+//        }
+//    }
     
-    private void ingestDataIntoNeo4j(final String data){
-        Driver driver = GraphDatabase.driver( this.neo4jHost, AuthTokens.basic( this.neo4jUsername, this.neo4jPassword ) );
-        try ( Session session = driver.session() )
-        {
-            String greeting = session.writeTransaction( new TransactionWork<String>()
-            {
-                @Override
-                public String execute( Transaction tx )
-                {
-                    StatementResult result = tx.run(data );
-                    return "";//result.single().get( 0 ).asString();
-                }
-            } );
-            
-        }
-        driver.close();
-    }
+//    private void ingestDataIntoNeo4j(final String data){
+//        Driver driver = GraphDatabase.driver( this.neo4jHost, AuthTokens.basic( this.neo4jUsername, this.neo4jPassword ) );
+//        try ( Session session = driver.session() )
+//        {
+//            String greeting = session.writeTransaction( new TransactionWork<String>()
+//            {
+//                @Override
+//                public String execute( Transaction tx )
+//                {
+//                    StatementResult result = tx.run(data );
+//                    return "";//result.single().get( 0 ).asString();
+//                }
+//            } );
+//            
+//        }
+//        driver.close();
+//    }
     
     @Override public void enterCursor_declaration(@NotNull PlSqlParser.Cursor_declarationContext ctx) { 
         int size=ctx.getChildCount();
@@ -194,14 +194,14 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
         isInCursorDeclaration=false;
     }
     @Override public void exitInsert_statement(@NotNull PlSqlParser.Insert_statementContext ctx) { 
-        this.printStackInfo("Insert");
+       // this.printStackInfo("Insert");
     }
     @Override public void exitDelete_statement(@NotNull PlSqlParser.Delete_statementContext ctx) { 
-        this.printStackInfo("Delete");
+       // this.printStackInfo("Delete");
     }
     
     @Override public void exitUpdate_statement(@NotNull PlSqlParser.Update_statementContext ctx) { 
-        this.printStackInfo("Update");
+       // this.printStackInfo("Update");
     }
     
     @Override public void enterStatement(@NotNull PlSqlParser.StatementContext ctx) { 
@@ -210,9 +210,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
             statusStack.clear();     
             processingCursorNames.clear();
         }
-    }
-    
-    
+    } 
  
     @Override public void enterInsert_into_clause(@NotNull PlSqlParser.Insert_into_clauseContext ctx) { 
         statusStack.push(DESTINATION);
@@ -348,13 +346,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     }
     
     @Override public void exitMerge_statement(@NotNull PlSqlParser.Merge_statementContext ctx) {
-        this.printStackInfo("Merge");    
-    }
-    
-    @Override public void enterQuery_block(@NotNull PlSqlParser.Query_blockContext ctx){
-        for(int i=0; i <ctx.getChildCount(); i++){
-            System.out.println(ctx.getChild(i).getText());
-        }
+       // this.printStackInfo("Merge");    
     }
     
 	/**
@@ -364,7 +356,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
 	public static void main(String[] args) throws Exception{
 	    if(args.length<5){
 	        System.err.println("Missing necessary arguments \n");
-	        System.out.println("Parameters:java PlsqlTableRelationParser  NEO4J_HOST NEO4J_USERNAME NEO4J_PASSWORD SQL_FILE TABLE_LIST_FILE1 TABLE_LIST_FILE2 ");
+	        System.out.println("Parameters:java PlsqlColumnTableRelationParser  NEO4J_HOST NEO4J_USERNAME NEO4J_PASSWORD SQL_FILE TABLE_LIST_FILE1 TABLE_LIST_FILE2 ");
 	        System.out.println("The format of TABLE_LIST_FILEx: OWNER_NAME,TABLE_NAME|VIEW_NAME,COLUMN_NAME ");
 	        System.out.println("                            eg: ABC_REPL,CARDTYPE,YYYYMM");
 	        System.exit(1);;
@@ -383,7 +375,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
 		ParseTree tree=parser.compilation_unit();
 		
 		ParseTreeWalker walker=new ParseTreeWalker();
-		PlsqlTableRelationParser extracter=new PlsqlTableRelationParser(parser,args[0], args[1], args[2], tableList);
+		PlsqlColumnTableRelationParser extracter=new PlsqlColumnTableRelationParser(parser,args[0], args[1], args[2], tableList);
 		System.out.println();
 		
 		walker.walk(extracter, tree);
