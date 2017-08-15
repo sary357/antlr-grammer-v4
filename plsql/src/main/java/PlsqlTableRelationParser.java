@@ -351,11 +351,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
         this.printStackInfo("Merge");    
     }
     
-    @Override public void enterQuery_block(@NotNull PlSqlParser.Query_blockContext ctx){
-        for(int i=0; i <ctx.getChildCount(); i++){
-            System.out.println(ctx.getChild(i).getText());
-        }
-    }
+   
     
 	/**
 	 * @param args
