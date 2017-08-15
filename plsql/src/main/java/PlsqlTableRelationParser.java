@@ -36,12 +36,14 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     private String tempCursorName=null;
     private Set<String> processingCursorNames=new HashSet<String>();
     private Map<String, Set<String>> tableList=null; // key: owner.table  value(a set): column
-    private Set<String> tableList2=new HashSet<String>();
+    private Set<String> tableList2=new HashSet<String>(); // table name only
     private boolean initialized=false;
     
     private String neo4jHost;
     private String neo4jUsername;
     private String neo4jPassword;
+    
+    private Map<String, Set<String>> tableAlias=new HashMap<String,Set<String>>(); // key: alias, value: table name
 //    public PlsqlTableRelationParser(PlSqlParser parser){
 //        this.parser=parser;
 //    }   
@@ -264,8 +266,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
      *
      * <p>The default implementation does nothing.</p>
      */
-    @Override public void enterCursor_name(@NotNull PlSqlParser.Cursor_nameContext ctx) { 
-        //System.out.println("GGGGGGGGGG121212GGGGGGGGGGG");
+    @Override public void enterCursor_name(@NotNull PlSqlParser.Cursor_nameContext ctx) {
         processingCursorNames.add(ctx.getText());
     }
     @Override public void enterCursor_loop_param(@NotNull PlSqlParser.Cursor_loop_paramContext ctx) {
@@ -291,9 +292,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
         String tableName;
         
         if(statusStack.size()>0 && ctx.getText().length()>3){
-            if(statusStack.get((statusStack.size()-1)).indexOf(DESTINATION)>=0 ){
-                
-                
+            if(statusStack.get((statusStack.size()-1)).indexOf(DESTINATION)>=0 ){                            
                 tableName=ctx.getText();
                 if(tableList.containsKey(tableName.toUpperCase()) || tableList2.contains(tableName.toUpperCase())){
                     tableStack.push(DESTINATION+":"+ctx.getText());
@@ -302,8 +301,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
             }else {
                 tableName=ctx.getText();
                 if(tableList.containsKey(tableName.toUpperCase())  || tableList2.contains(tableName.toUpperCase())){
-                    tableStack.push(SOURCE+":"+ctx.getText());
-                    //System.out.println("Source Table:" + ctx.getText());
+                    tableStack.push(SOURCE+":"+tableName);
                 }
                 if(isInCursorDeclaration){
                     List<String> tmpList=cursorQueryTable.get(this.tempCursorName);

@@ -1406,11 +1406,13 @@ concatenation
     ;
 
 additive_expression
-    : multiply_expression (op+=('+' | '-') multiply_expression)*
+    : multiply_expression (op+=('+' | '-') multiply_expression)* (MINUS_INTEGER)*
+    
     ;
 
 multiply_expression
-    : datetime_expression (op+=('*' | '/') datetime_expression)*
+    : datetime_expression (op+=('*' | '/') datetime_expression)* 
+    
     ;
 
 datetime_expression
