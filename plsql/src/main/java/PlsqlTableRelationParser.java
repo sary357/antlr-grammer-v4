@@ -20,7 +20,8 @@ import java.util.Stack;
 import org.neo4j.driver.v1.*;
 import static org.neo4j.driver.v1.Values.parameters;
 /**
- *
+ * after executing this class, you will get the relationship between tables in Neo4j. However, the relationship between column and tables will not exist in this class.
+ * 
  */
 public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
     private PlSqlParser parser;
