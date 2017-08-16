@@ -141,25 +141,79 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
                    // System.out.println(SOURCE+":"+cursorQueryTable.get(s));
                 
                 //System.out.println("-------------------------------------------");
+                
                 if(downStreamTableName!=null){
-                    //System.out.println("merge (t:Table {Name:\""+downStreamTableName+"\"}) return t;");
-                    this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+downStreamTableName+"\"})");
-                    for(String s: upperStreamTableName){
-                       // System.out.println("merge (t:Table {Name:\""+s+"\"}) return t;");
-                       // System.out.println("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
-                        
-                        this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+s+"\"})");
-                        this.ingestDataIntoNeo4j("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
+                    Set<String> dColumnSet=this.tableList.get(downStreamTableName);
+                    if(!isTableExists(downStreamTableName)){// create destination table in neo4j
+                        System.out.println("------------------ Creating destination table:"+downStreamTableName+" in neo4j -------------------------");
+                        this.ingestDataIntoNeo4j("create (t:Table {Name:\""+downStreamTableName+"\"});"); // print downstream table and columns                       
+                       
+                        for(String columns: dColumnSet){
+                            //System.out.println(columns);
+                            this.ingestDataIntoNeo4j("create (c:Column {Name:\""+columns+"\",SearchName:\""+downStreamTableName+"."+columns+"\"}) ;");
+                            this.ingestDataIntoNeo4j("MATCH (t:Table { Name:\""+downStreamTableName+"\" }),(c:Column {SearchName:\""+downStreamTableName+"."+columns+"\" }) create unique (t)-[:HAVE]->(c);");
+                        }
+                    }else{
+                        System.out.println("------------------ Destination table:"+downStreamTableName+" exists in neo4j -------------------------");
                     }
-                   // System.out.println("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
-                    this.ingestDataIntoNeo4j("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
-                  //  System.out.println("match (t1:Table)-[r]-(t2:Table) return t1,r,t2;");
+                    
+                    
+                   // source table
+                    //this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+downStreamTableName+"\"})");
+                    for(String s: upperStreamTableName){
+                        if(!isTableExists(s)){
+                            System.out.println("------------------ Creating source table:"+s+" in neo4j -------------------------");
+                            this.ingestDataIntoNeo4j("create (t:Table {Name:\""+s+"\"});");
+                            Set<String> sColumnSet=this.tableList.get(s);
+                            for(String column: sColumnSet){
+                                
+                                this.ingestDataIntoNeo4j("CREATE (c:Column {Name:\""+column+"\",SearchName:\""+s+"."+column+"\"}) ;");
+                                this.ingestDataIntoNeo4j("MATCH (t:Table { Name:\""+s+"\" }),(c:Column {SearchName:\""+s+"."+column+"\" }) create unique (t)-[:HAVE]->(c);");                                
+                            }                          
+                        }else{
+                            System.out.println("------------------ Source table:"+s+" exists in neo4j -------------------------");
+                        }
+                    }
+                   
+                  
+                    
+                    System.out.println("------- Trying to match column by column name -----");
+                    for(String s: upperStreamTableName){
+                        Set<String> sColumnSet=this.tableList.get(s);
+                        for(String column: sColumnSet){
+                            if(dColumnSet.contains(column)){
+                                //System.out.println("match column name");
+                                this.ingestDataIntoNeo4j("MATCH (c1:Column { SearchName:\""+downStreamTableName+"."+column+"\" }),(c2:Column {SearchName:\""+s+"."+column+"\" }) create unique (c1)<-[:DOWNSTREAM]-(c2);");
+                            }
+                        }
+                        
+                        for(String column: dColumnSet){
+                            if(sColumnSet.contains(column)){
+                              //  System.out.println("match column name");
+                                this.ingestDataIntoNeo4j("MATCH (c1:Column { SearchName:\""+s+"."+column+"\" }),(c2:Column {SearchName:\""+downStreamTableName+"."+column+"\" }) create unique (c1)-[:DOWNSTREAM]->(c2);");
+                            }
+                        }
+                    }
+                    System.out.println("match (t:Table)-[r:HAVE]-(c:Column) return t,r,c;");
                 }
                 System.out.println("----------------- Data have been ingested by neo4j ---------------------------");
                 
             }else
                 tableStack.clear();
         }
+    }
+    
+    private boolean isTableExists(String tableName){
+        Driver driver = GraphDatabase.driver( this.neo4jHost, AuthTokens.basic( this.neo4jUsername, this.neo4jPassword ) );
+        boolean result=false;
+        Session session=driver.session();
+        StatementResult stmtResult = session.run("MATCH (t:Table) WHERE t.Name = {name} " +
+                "RETURN t.Name",parameters( "name", tableName ));
+        if(stmtResult.hasNext())
+            result=true;
+        session.close();
+        driver.close();
+        return result;
     }
     
     private void ingestDataIntoNeo4j(final String data){
