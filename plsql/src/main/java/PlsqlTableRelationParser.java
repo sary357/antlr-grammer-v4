@@ -152,7 +152,7 @@ public class PlsqlTableRelationParser extends PlSqlParserBaseListener{
                         this.ingestDataIntoNeo4j("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
                     }
                    // System.out.println("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
-                    this.ingestDataIntoNeo4j("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
+                    //this.ingestDataIntoNeo4j("match (t1:Table)-[r:DOWNSTREAM]->(t2:Table) create unique (t2)-[:UPSTREAM]->(t1);");
                   //  System.out.println("match (t1:Table)-[r]-(t2:Table) return t1,r,t2;");
                 }
                 System.out.println("----------------- Data have been ingested by neo4j ---------------------------");
