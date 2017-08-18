@@ -103,8 +103,6 @@ match (t:Table)-[r:HAVE]-(c:Column) return t,r,c;
 HAVE: Table 擁有 (HAVE) 欄位 (COLUMN)
 DOWNSTREAM: 代表不同 Table 關係: A - HAVE -> COLUMN_A - downstream -> COLUMN_B <- HAVE - B: 代表從 Table A 出來的 COLUMN_A 欄位資料會影響 Table B 的 COLUMN_B 資料
 ```
-
-```
 3. 下面是一些常用的 CQL 語法
 ```
 1. 查詢所有節點: match (t) return t
