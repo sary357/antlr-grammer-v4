@@ -110,7 +110,7 @@ DOWNSTREAM: 代表不同 Table 關係: A - HAVE -> COLUMN_A - downstream -> COLU
 3. 刪除所有節點: match (t) delete t
 ```
 ### P.S
-- 一次只能執行 Table 關係檢視和 Table - Column 關係檢視其中一個, 建議可以利用換 neo4j database 來改變, 換句話說, 一個 database 存放 table 關係, 另外一個 database 存放 table-column 關係
+- 一次只能執行 Table 關係檢視和 Table - Column 關係檢視其中一個, 建議可以利用換 neo4j database 來改變, 換句話說, 一個 database 存放 table 關係, 另外一個 database 存放 table-column 關係,  可以參考 [Stack Overflow](https://stackoverflow.com/questions/10888280/neo4j-how-to-switch-database) 了解如何使用
 ## On linux&Mac
 ### TBD
 
