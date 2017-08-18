@@ -218,6 +218,7 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
     
     private void ingestDataIntoNeo4j(final String data){
         Driver driver = GraphDatabase.driver( this.neo4jHost, AuthTokens.basic( this.neo4jUsername, this.neo4jPassword ) );
+        //System.out.println(data);
         try ( Session session = driver.session() )
         {
             String greeting = session.writeTransaction( new TransactionWork<String>()
