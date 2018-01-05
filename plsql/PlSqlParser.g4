@@ -147,7 +147,7 @@ function_spec
 package_obj_body
     : variable_declaration 
     | subtype_declaration 
-    | cursor_declaration 
+    | cursor_declaration
     | exception_declaration 
     | type_declaration
     | procedure_body
@@ -959,7 +959,8 @@ table_ref
 
 table_ref_aux
    // : table_ref_aux_internal (table_alias)?
-    : table_ref_aux_internal+ flashback_query_clause* (table_alias)?
+    //: table_ref_aux_internal+ flashback_query_clause* (table_alias)?
+    : (table_ref_aux_internal flashback_query_clause* (table_alias)?)
     ;
 //table_ref_aux
 //    : table_ref_aux_internal+  (table_alias)?

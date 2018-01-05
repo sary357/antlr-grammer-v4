@@ -399,7 +399,7 @@ SUSPEND:                      'SUSPEND'|'suspend';
 SYSDATE:                      'SYSDATE'|'sysdate';
 TABLE:                        'TABLE'|'table';
 THE:                          'THE'|'the';
-THEN:                         'THEN'|'then';
+THEN:                         'THEN'|'then'|'Then';
 TIME:                         'TIME'|'time';
 TIMESTAMP:                    'TIMESTAMP'|'timestamp';
 TIMESTAMP_LTZ_UNCONSTRAINED:  'TIMESTAMP_LTZ_UNCONSTRAINED'|'timestamp_ltz_unconstrained';

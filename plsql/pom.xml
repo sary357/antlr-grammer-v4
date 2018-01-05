@@ -7,13 +7,12 @@
     
     <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.7</maven.compiler.source>
-    <maven.compiler.target>1.7</maven.compiler.target>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
   </properties>
 	<parent>
 		<groupId>com.antlr.grammarsv4</groupId>
-		<artifactId>grammarsv4</artifactId>
-		<version>1.0-SNAPSHOT</version>
+		<artifactId>grammarsv4</artifactId>		<version>1.0-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<build>
@@ -45,7 +44,7 @@
 				<version>${antlr4test-maven-plugin.version}</version>
 				<configuration>
 				<verbose>false</verbose>
-					<showTree>false</showTree>
+					<showTree>true</showTree>
 					<entryPoint>compilation_unit</entryPoint>
 					<grammarName>PlSql</grammarName>
 					<caseInsensitiveType>UPPER</caseInsensitiveType>
@@ -65,7 +64,7 @@
 						</goals>
 						<configuration>
 							<verbose>true</verbose>
-							<showTree>false</showTree>
+							<showTree>true</showTree>
 							<entryPoint>sql_script</entryPoint> 
 							<!-- <entryPont>compilation_unit</entryPont> -->
 							<grammarName>PlSql</grammarName>

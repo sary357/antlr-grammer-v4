@@ -7,10 +7,18 @@ import org.antlr.v4.runtime.misc.NotNull;
 import org.antlr.v4.runtime.tree.*;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.Charset;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,13 +32,15 @@ import static org.neo4j.driver.v1.Values.parameters;
  * after executing this class, you will get the relationship between tables in Neo4j. However, the relationship between column and tables will not exist in this class.
  * 
  */
-public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
+public class PlsqlTableScanner extends PlSqlParserBaseListener{
     private PlSqlParser parser;
   
     public static final String DESTINATION="[destination:insert][delete target:delete][update target table:update][merge into destination table: merge]"; // destination
     public static final String SOURCE="[source:insert][delete source table:delete][update source table: update][merge source table: merge]"; // source
+    public static final String UTF_8="UTF-8";
     private Stack<String> tableStack=new Stack<String>();
     private Stack<String> statusStack=new Stack<String>();
+    private Stack<String> tmpTableStack=new Stack<String>();
     private boolean isInCursorDeclaration=false;
     private boolean inLoop=false;
     
@@ -40,21 +50,19 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
     private Map<String, Set<String>> tableList=null; // key: owner.table  value(a set): column
     private Set<String> tableList2=new HashSet<String>(); // table name only
     private boolean initialized=false;
-    
-    private String neo4jHost;
-    private String neo4jUsername;
-    private String neo4jPassword;
+    BufferedWriter bfw;
+  //  private String neo4jHost;
+ //   private String neo4jUsername;
+ //   private String neo4jPassword;
     
     private Map<String, Set<String>> tableAlias=new HashMap<String,Set<String>>(); // key: alias, value: table name
 //    public PlsqlTableRelationParser(PlSqlParser parser){
 //        this.parser=parser;
 //    }   
     
-    public PlsqlColumnTableRelationParser(PlSqlParser parser, String host, String username, String password, String[] fileName){
+    public PlsqlTableScanner(PlSqlParser parser, BufferedWriter w, String[] fileName){
         this.parser=parser;
-        this.neo4jUsername=username;
-        this.neo4jHost=host;
-        this.neo4jPassword=password;
+        this.bfw=w;
         this.ingestTableList(fileName);
     }  
     
@@ -68,7 +76,7 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
         String columnName;
         try{
             for(String f: fileName){
-                System.out.println("Read content from file: "+f);
+                // System.out.println("Read content from file: "+f);
                 
                 in = new BufferedReader(new FileReader(f));
                 while((line=in.readLine()) != null)
@@ -123,6 +131,11 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
                     tmpStr=tableStack.pop();
                    
                     System.out.println(tmpStr);
+                    try{
+                        this.bfw.write(tmpStr+"\n");
+                    }catch(IOException e){
+                        System.err.println("Fail to write the output file");
+                    }
                     if(tmpStr.startsWith(SOURCE))
                         upperStreamTableName.add(tmpStr.replace(SOURCE+":", ""));
                     else
@@ -133,138 +146,79 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
                 // print the part in cursor
                 for(String s: processingCursorNames){
                     tmpList=cursorQueryTable.get(s);
-                    for(String t: tmpList){
-                        
-                        System.out.println(SOURCE+"[CURSOR]:"+t);
-                        upperStreamTableName.add(t);
-                    }
-                }
-                   // System.out.println(SOURCE+":"+cursorQueryTable.get(s));
-                
-                //System.out.println("-------------------------------------------");
-                
-                if(downStreamTableName!=null){
-                    Set<String> dColumnSet=this.tableList.get(downStreamTableName);
-                    if(!isTableExists(downStreamTableName)){// create destination table in neo4j
-                        System.out.println("------------------ Creating destination table:"+downStreamTableName+" in neo4j -------------------------");
-                        this.ingestDataIntoNeo4j("create (t:Table {Name:\""+downStreamTableName+"\"});"); // print downstream table and columns                       
-                       
-                        if(dColumnSet!=null)
-                            for(String columns: dColumnSet){
-                                //System.out.println(columns);
-                                this.ingestDataIntoNeo4j("create (c:Column {Name:\""+columns+"\",SearchName:\""+downStreamTableName+"."+columns+"\"}) ;");
-                                this.ingestDataIntoNeo4j("MATCH (t:Table { Name:\""+downStreamTableName+"\" }),(c:Column {SearchName:\""+downStreamTableName+"."+columns+"\" }) create unique (t)-[:HAVE]->(c);");
-                            }
-                    }else{
-                        System.out.println("------------------ Destination table:"+downStreamTableName+" exists in neo4j -------------------------");
-                    }
-                    
-                    
-                   // source table
-                    //this.ingestDataIntoNeo4j("merge (t:Table {Name:\""+downStreamTableName+"\"})");
-                    for(String s: upperStreamTableName){
-                        if(!isTableExists(s)){
-                            System.out.println("------------------ Creating source table:"+s+" in neo4j -------------------------");
-                            this.ingestDataIntoNeo4j("create (t:Table {Name:\""+s+"\"});");
-                            Set<String> sColumnSet=this.tableList.get(s);
-                            if(sColumnSet!=null)
-                                for(String column: sColumnSet){
-                                
-                                    this.ingestDataIntoNeo4j("CREATE (c:Column {Name:\""+column+"\",SearchName:\""+s+"."+column+"\"}) ;");
-                                    this.ingestDataIntoNeo4j("MATCH (t:Table { Name:\""+s+"\" }),(c:Column {SearchName:\""+s+"."+column+"\" }) create unique (t)-[:HAVE]->(c);");                                
-                                }                          
-                        }else{
-                            System.out.println("------------------ Source table:"+s+" exists in neo4j -------------------------");
+                    if(tmpList!=null && tmpList.size()>0){
+                        for(String t: tmpList){
+                            
+                            System.out.println(SOURCE+"[CURSOR]:"+t);
+                            upperStreamTableName.add(t);
                         }
                     }
+                }                
+                //System.out.println("-------------------------------------------");
+                if(downStreamTableName!=null){
                    
-                  
-                    
-                    System.out.println("------- Trying to match column by column name -----");
                     for(String s: upperStreamTableName){
-                        Set<String> sColumnSet=this.tableList.get(s);
-                        if(sColumnSet!=null)
-                            for(String column: sColumnSet){
-                                if(dColumnSet!=null && dColumnSet.contains(column)){
-                                    //System.out.println("match column name");
-                                    this.ingestDataIntoNeo4j("MATCH (c1:Column { SearchName:\""+downStreamTableName+"."+column+"\" }),(c2:Column {SearchName:\""+s+"."+column+"\" }) create unique (c1)<-[:DOWNSTREAM]-(c2);");
-                                }
-                            }
-                        
-                        if(dColumnSet!=null)
-                            for(String column: dColumnSet){
-                                
-                                if(sColumnSet!=null && sColumnSet.contains(column)){
-                                  //  System.out.println("match column name");
-                                    this.ingestDataIntoNeo4j("MATCH (c1:Column { SearchName:\""+s+"."+column+"\" }),(c2:Column {SearchName:\""+downStreamTableName+"."+column+"\" }) create unique (c1)-[:DOWNSTREAM]->(c2);");
-                                }
-                            }
+                        System.out.println("merge (t:Table {Name:\""+s+"\"}) return t;");
+                        System.out.println("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
+                        try{
+                            this.bfw.write("source table:"+s+"/destination table:"+downStreamTableName+"\n");
+                        }catch(IOException e){
+                            System.err.println("Fail to write the output file");
+                        }
+                     
                     }
-                    System.out.println("match (t:Table)-[r:HAVE]-(c:Column) return t,r,c;");
+                 
                 }
-                System.out.println("----------------- Data have been ingested by neo4j ---------------------------");
+               
                 
             }else
                 tableStack.clear();
         }
-    }
-    
-    private boolean isTableExists(String tableName){
-        Driver driver = GraphDatabase.driver( this.neo4jHost, AuthTokens.basic( this.neo4jUsername, this.neo4jPassword ) );
-        boolean result=false;
-        Session session=driver.session();
-        StatementResult stmtResult = session.run("MATCH (t:Table) WHERE t.Name = {name} " +
-                "RETURN t.Name",parameters( "name", tableName ));
-        if(stmtResult.hasNext())
-            result=true;
-        session.close();
-        driver.close();
-        return result;
-    }
-    
-    private void ingestDataIntoNeo4j(final String data){
-  //      System.out.println(data);
-        Driver driver = GraphDatabase.driver( this.neo4jHost, AuthTokens.basic( this.neo4jUsername, this.neo4jPassword ) );
         
-        try ( Session session = driver.session() )
-        {
-            String greeting = session.writeTransaction( new TransactionWork<String>()
-            {
-                @Override
-                public String execute( Transaction tx )
-                {
-                    StatementResult result = tx.run(data );
-                    return "";//result.single().get( 0 ).asString();
+        if(tmpTableStack!=null && tmpTableStack.size()>0){
+            for(String s: tmpTableStack){
+                //System.out.println("Temp table:\""+s+"\"");
+                try{
+                    this.bfw.write(s+"\n");
+                }catch(IOException e){
+                    System.err.println("Fail to write the output file");
                 }
-            } );
-            
+               
+            }
+            tmpTableStack.clear();
+        }else{
+            //System.out.println("No temp table");
+            try{
+                this.bfw.write("No temp file\n");
+            }catch(IOException e){
+                System.err.println("Fail to write the output file");
+            }
         }
-        driver.close();
+        try{
+            this.bfw.flush();
+        }catch(IOException e){
+            System.err.println("Fail to write the output file");
+        }
     }
     
-    
-    @Override public void enterSelect_statement(@NotNull PlSqlParser.Select_statementContext ctx) { 
-        
-    }
-    /**
-     * {@inheritDoc}
-     *
-     * <p>The default implementation does nothing.</p>
-     */
-    @Override public void exitSelect_statement(@NotNull PlSqlParser.Select_statementContext ctx) { }
-    
-    
-    @Override public void enterSelected_element(@NotNull PlSqlParser.Selected_elementContext ctx) { 
-        
-    }
-    /**
-     * {@inheritDoc}
-     *
-     * <p>The default implementation does nothing.</p>
-     */
-    @Override public void exitSelected_element(@NotNull PlSqlParser.Selected_elementContext ctx) { }
-    
-    
+//    private void ingestDataIntoNeo4j(final String data){
+//        Driver driver = GraphDatabase.driver( this.neo4jHost, AuthTokens.basic( this.neo4jUsername, this.neo4jPassword ) );
+//        try ( Session session = driver.session() )
+//        {
+//            String greeting = session.writeTransaction( new TransactionWork<String>()
+//            {
+//                @Override
+//                public String execute( Transaction tx )
+//                {
+//                    StatementResult result = tx.run(data );
+//                    return "";//result.single().get( 0 ).asString();
+//                }
+//            } );
+//            
+//        }
+//        driver.close();
+//    }
+//    
     @Override public void enterCursor_declaration(@NotNull PlSqlParser.Cursor_declarationContext ctx) { 
         int size=ctx.getChildCount();
         for(int i=0; i<size; i++){
@@ -310,7 +264,8 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
      */
     @Override public void exitInsert_into_clause(@NotNull PlSqlParser.Insert_into_clauseContext ctx) {
        // intoDestination=false;
-        statusStack.pop();
+        if(statusStack.size()>0)
+            statusStack.pop();
     }
     
     
@@ -371,23 +326,28 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
      * <p>The default implementation does nothing.</p>
      */
     @Override public void exitFrom_clause(@NotNull PlSqlParser.From_clauseContext ctx) { 
-        statusStack.pop();
+        if(statusStack.size()>0)
+            statusStack.pop();
     }
     
     @Override public void enterTableview_name(@NotNull PlSqlParser.Tableview_nameContext ctx) { 
         String tableName;
-        
+        boolean inSourceTable=false;
+        //System.out.println("Enter: "+ctx.getText());
         if(statusStack.size()>0 && ctx.getText().length()>3){
             if(statusStack.get((statusStack.size()-1)).indexOf(DESTINATION)>=0 ){                            
                 tableName=ctx.getText();
                 if(tableList.containsKey(tableName.toUpperCase()) || tableList2.contains(tableName.toUpperCase())){
                     tableStack.push(DESTINATION+":"+ctx.getText());
-                    //System.out.println("Destination Table:" + ctx.getText());
+                }else{
+                    if(ctx.getText().indexOf("ods_system")<0)
+                        tmpTableStack.push("[TEMP_TABLE]:"+ctx.getText());// record temp table
                 }
             }else {
                 tableName=ctx.getText();
                 if(tableList.containsKey(tableName.toUpperCase())  || tableList2.contains(tableName.toUpperCase())){
                     tableStack.push(SOURCE+":"+tableName);
+                    inSourceTable=true;
                 }
                 if(isInCursorDeclaration){
                     List<String> tmpList=cursorQueryTable.get(this.tempCursorName);
@@ -399,6 +359,12 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
                      
                    // System.out.println("Source Table:" + ctx.getText());
                     cursorQueryTable.put(this.tempCursorName, tmpList);
+                    
+                    inSourceTable=true;
+                }
+                if(!inSourceTable){
+                    if(ctx.getText().indexOf("ods_system")<0)
+                        tmpTableStack.push("[TEMP_TABLE]:"+ctx.getText());
                 }
             }
         }
@@ -440,7 +406,7 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
     public static String getFileListName(String path){      
         File f=new File(path);
         if(f.isFile()){
-            if(f.getAbsolutePath().endsWith(".sql"))
+            if(f.getAbsolutePath().endsWith(".sql") || f.getAbsolutePath().endsWith(".SQL"))
                 return f.getAbsolutePath();
             else
                 return null;
@@ -455,6 +421,20 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
         }           
     }
     
+    //get a writer
+    public static BufferedWriter getWriter(String path) throws IOException{
+        Path p= FileSystems.getDefault().getPath(path);
+        Charset charset = Charset.forName(UTF_8);
+        BufferedWriter writer=null;
+        try  {
+            writer = Files.newBufferedWriter(p, charset);
+        } catch (IOException x) {
+            System.err.format("IOException: %s%n", x);
+            throw x;
+        }
+        return writer;
+    }
+    
 	/**
 	 * @param args
 	 */
@@ -462,57 +442,85 @@ public class PlsqlColumnTableRelationParser extends PlSqlParserBaseListener{
 	public static void main(String[] args) throws Exception{
 	    if(args.length<5){
 	        System.err.println("Missing necessary arguments \n");
-	        System.out.println("Parameters:java PlsqlColumnTableRelationParser  NEO4J_HOST NEO4J_USERNAME NEO4J_PASSWORD SQL_FILE TABLE_LIST_FILE1 TABLE_LIST_FILE2 ");
+	        System.out.println("Parameters:java PlsqlTableScanner SQL_FILE REPORT_FILE TABLE_LIST_FILE1 TABLE_LIST_FILE2 ");
 	        System.out.println("The format of TABLE_LIST_FILEx: OWNER_NAME,TABLE_NAME|VIEW_NAME,COLUMN_NAME ");
 	        System.out.println("                            eg: ABC_REPL,CARDTYPE,YYYYMM");
 	        System.exit(1);;
 	    }
 	        
-		String inputFile=args[3];//"D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/c1.sql";
-		String [] tableList=new String[args.length-4];
-		for(int i=4; i<args.length; i++)
-		    if(args[i]!=null)
-		        tableList[i-4]=args[i];       
-		// single file
-		File f=new File(inputFile);
-		if(f.isFile()){
-		    InputStream is = new FileInputStream(inputFile);
-	        ANTLRInputStream input = new ANTLRInputStream(is);
-	        PlSqlLexer lexer=new PlSqlLexer(input);
-	        CommonTokenStream tokens=new CommonTokenStream(lexer);
-	        PlSqlParser parser=new PlSqlParser(tokens);
-	        ParseTree tree=parser.compilation_unit();       
-	        ParseTreeWalker walker=new ParseTreeWalker();
-	        PlsqlColumnTableRelationParser extracter=null;
-    		extracter=new PlsqlColumnTableRelationParser(parser,args[0], args[1], args[2], tableList);  		
-    		System.out.println();
-    		walker.walk(extracter, tree);
-		}
+		String inputFile=args[0];//"D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/c1.sql";
+		String reportFile=args[1]; // write log in reportFile
+		String [] tableList=new String[args.length-2];
 		
-		// a directory
-		if(f.isDirectory()){
-		    String result=PlsqlColumnTableRelationParser.getFileListName(inputFile);
-		    String[] inputArr=result.split("\n");
-		    int index=0;
-		    for(String s: inputArr){
-		        if(s.length()>1){
-//		            System.out.println(index+":"+s);
-//		            InputStream is = new FileInputStream(s);
-//		            ANTLRInputStream input = new ANTLRInputStream(is);
-//		            PlSqlLexer lexer=new PlSqlLexer(input);
-//		            CommonTokenStream tokens=new CommonTokenStream(lexer);
-//		            PlSqlParser parser=new PlSqlParser(tokens);
-//		            ParseTree tree=parser.compilation_unit();       
-//		            ParseTreeWalker walker=new ParseTreeWalker();
-//		            PlsqlColumnTableRelationParser extracter=null;
-//		            extracter=new PlsqlColumnTableRelationParser(parser,args[0], args[1], args[2], tableList);        
-//		            System.out.println();
-//		            walker.walk(extracter, tree);
-		            index+=1;
-		        }
-		    }
-		    System.out.println(index);
-		    
+		for(int i=2; i<args.length; i++)
+		    if(args[i]!=null)
+		        tableList[i-2]=args[i];
+		 System.out.println("------------------- START ----------------------");
+		System.out.println("Input SQL file path: " + inputFile);
+		System.out.println("Report file path: "+ reportFile);
+		System.out.println("Table defintion list: ");
+		for(String s: tableList){
+		    System.out.println("\t"+s);
 		}
+		System.out.println();
+		
+		
+		File f=new File(inputFile);
+		BufferedWriter writer=PlsqlTableScanner.getWriter(reportFile);
+        if(f.isFile()){
+            System.out.println("File path: " + inputFile);
+            writer.write("File path: " + inputFile);         
+            InputStream is = new FileInputStream(inputFile);
+            Reader r = new InputStreamReader(is, "utf-8"); 
+            ANTLRInputStream input = new ANTLRInputStream(r);
+            PlSqlLexer lexer=new PlSqlLexer(input);
+            CommonTokenStream tokens=new CommonTokenStream(lexer);
+            PlSqlParser parser=new PlSqlParser(tokens);
+            ParseTree tree=parser.compilation_unit();       
+            ParseTreeWalker walker=new ParseTreeWalker();
+            PlsqlTableScanner extracter=null;
+            extracter=new PlsqlTableScanner(parser, writer, tableList);          
+            System.out.println();
+            writer.write("\n");
+            walker.walk(extracter, tree);
+            writer.flush();
+            writer.close();;
+            
+        }
+        
+        // a directory
+        if(f.isDirectory()){
+            String result=PlsqlTableScanner.getFileListName(inputFile);
+            String[] inputArr=result.split("\n");
+            int index=0;
+            for(String s: inputArr){
+                if(s.length()>1){
+                    System.out.println(index+":"+s);
+                    writer.write("("+(index+1)+".) " +"File path: "+ s); 
+                    InputStream is = new FileInputStream(s);
+                    Reader r=new InputStreamReader(is, "utf-8"); 
+                    ANTLRInputStream input = new ANTLRInputStream(r);
+                    PlSqlLexer lexer=new PlSqlLexer(input);
+                    CommonTokenStream tokens=new CommonTokenStream(lexer);
+                    PlSqlParser parser=new PlSqlParser(tokens);
+                    ParseTree tree=parser.compilation_unit();       
+                    ParseTreeWalker walker=new ParseTreeWalker();
+                    PlsqlTableScanner extracter=null;
+                    extracter=new PlsqlTableScanner(parser, writer, tableList);        
+                    System.out.println();
+                    writer.write("\n");
+                    walker.walk(extracter, tree);
+                    
+                    index+=1;
+                }
+            }
+            writer.flush();
+            writer.close();;
+            System.out.println("Total number of processed files: "+index);
+            
+        }
+        
+        System.out.println("------------------- DONE -----------------------");
 	}
+
 }
