@@ -24,7 +24,17 @@ ABC_REPL,CARDTYPE,CARD2
 > set CLASSPATH=D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\antlr4-runtime-4.7.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\hamcrest-core-1.3.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\neo4j-java-driver-1.4.2.jar
 ```
 ### 執行解析
-#### I. 顯示 Table 關係
+#### I. 轉換格式
+- 由於 Windows 上面的文字檔案是 Big5 編碼, antlr 會無法正常解析, 所以我們需要將所有的 PL/SQL 檔案轉為 UTF-8 格式
+```
+> java ConvertSQLFileEncoding 原始檔案絕對路徑或是含有PL/SQL檔案的目錄路徑 原始檔案編碼格式 目的檔案的絕對路徑或是要放結果檔案的目錄路徑 目的檔案的編碼格式
+```
+- 範例
+``` 
+> java ConvertSQLFileEncoding D:/temp/Dimension/ Big5 D:/temp/Dimension-2/ UTF-8
+
+```
+#### II. 顯示 Table 關係
 - 執行 PlsqlTableRelationParser 解析 (請注意 TABLE_OWNER+TABLE_NAME定義檔 理論上可以無限個)
 ```
 > java PlsqlTableRelationParser NEO4J主機(長相為 bolt://127.0.0.1:PORT) NEO4J帳號 NEO4j密碼 需要處理的PL/SQL檔案絕對路徑 TABLE_OWNER+TABLE_NAME定義檔1 TABLE_OWNER+TABLE_NAME定義檔2 TABLE_OWNER+TABLE_NAME定義檔3 TABLE_OWNER+TABLE_NAME定義檔4 ... TABLE_OWNER+TABLE_NAME定義檔n
@@ -68,7 +78,7 @@ A - downstream -> B: 代表從 Table A 出來的資料會影響 Table B, 也代�
 2. 刪除所有關係: match (t)-[r]-(q) delete r
 3. 刪除所有節點: match (t) delete t
 ```
-#### II. 顯示 Table 關係 - 進階版
+#### III. 顯示 Table 關係 - 進階版
 - 執行 PlsqlTableScanner 解析 (請注意 TABLE_OWNER+TABLE_NAME定義檔 理論上可以無限個)
 ```
 > java PlsqlTableScanner 需要處理的PL/SQL檔案絕對路徑或包含PL/SQL檔案的資料夾絕對路徑 輸出檔案絕對路徑 TABLE_OWNER+TABLE_NAME定義檔1 TABLE_OWNER+TABLE_NAME定義檔2 TABLE_OWNER+TABLE_NAME定義檔3 TABLE_OWNER+TABLE_NAME定義檔4 ... TABLE_OWNER+TABLE_NAME定義檔n
@@ -95,7 +105,7 @@ File path: D:/temp/Dimensions/BNK_D_WMG/DM/DM_WMG/SP_WMG_VD_NCC_3M.sql
 ```
 
 
-#### III. 顯示 Column - Table 關係
+#### IV. 顯示 Column - Table 關係
 - 目前只能用來 mapping 如果 Column 是屬於同樣名稱的 table, 尚未能夠依照 PLSQL 所描述的關係建立關係
 - 執行 PlsqlColumnTableRelationParser 解析 (請注意 TABLE_OWNER+TABLE_NAME定義檔 理論上可以無限個)
 ```
