@@ -68,7 +68,34 @@ A - downstream -> B: 代表從 Table A 出來的資料會影響 Table B, 也代�
 2. 刪除所有關係: match (t)-[r]-(q) delete r
 3. 刪除所有節點: match (t) delete t
 ```
-#### II. 顯示 Column - Table 關係
+#### II. 顯示 Table 關係 - 進階版
+- 執行 PlsqlTableScanner 解析 (請注意 TABLE_OWNER+TABLE_NAME定義檔 理論上可以無限個)
+```
+> java PlsqlTableScanner 需要處理的PL/SQL檔案絕對路徑 輸出檔案絕對路徑 TABLE_OWNER+TABLE_NAME定義檔1 TABLE_OWNER+TABLE_NAME定義檔2 TABLE_OWNER+TABLE_NAME定義檔3 TABLE_OWNER+TABLE_NAME定義檔4 ... TABLE_OWNER+TABLE_NAME定義檔n
+```
+- 範例:
+```
+> java PlsqlTableScanner D:/temp/Dimensions/BNK_D_WMG/DM/DM_WMG/SP_WMG_VD_NCC_3M.sql D:/temp/Dimensions/result_5.log D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_1.txt D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_2.txt D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_3.txt D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_4.txt D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_5.txt D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_6.txt
+
+------------------- START ----------------------
+Input SQL file path: D:/temp/Dimensions/BNK_D_WMG/DM/DM_WMG/SP_WMG_VD_NCC_3M.sql
+Report file path: D:/temp/Dimensions/result_5.log
+Table defintion list: 
+	D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_1.txt
+	D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_2.txt
+	D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_3.txt
+	D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_4.txt
+	D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_5.txt
+	D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/table_list_6.txt
+
+File path: D:/temp/Dimensions/BNK_D_WMG/DM/DM_WMG/SP_WMG_VD_NCC_3M.sql
+
+----------------- Done ---------------------------
+
+```
+
+
+#### III. 顯示 Column - Table 關係
 - 目前只能用來 mapping 如果 Column 是屬於同樣名稱的 table, 尚未能夠依照 PLSQL 所描述的關係建立關係
 - 執行 PlsqlColumnTableRelationParser 解析 (請注意 TABLE_OWNER+TABLE_NAME定義檔 理論上可以無限個)
 ```
@@ -112,6 +139,11 @@ DOWNSTREAM: 代表不同 Table 關係: A - HAVE -> COLUMN_A - downstream -> COLU
 ```
 ### P.S
 - 一次只能執行 Table 關係檢視和 Table - Column 關係檢視其中一個, 建議可以利用換 neo4j database 來改變, 換句話說, 一個 database 存放 table 關係, 另外一個 database 存放 table-column 關係,  可以參考 [Stack Overflow](https://stackoverflow.com/questions/10888280/neo4j-how-to-switch-database) 了解如何使用
+- 目前知道有下列問題
+```
+1. 如果欄位名稱是中文時, 解析可能會發生問題
+2. 如果要解析的 PL/SQL 檔案是用 MS950 編碼, 也會發生問題
+```
 ## On linux&Mac
 ### TBD
 
