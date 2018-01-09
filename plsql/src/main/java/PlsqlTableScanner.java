@@ -24,10 +24,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.Stack;
 import org.neo4j.driver.v1.*;
 import static org.neo4j.driver.v1.Values.parameters;
+import java.nio.charset.StandardCharsets;
 /**
  * after executing this class, you will get the relationship between tables in Neo4j. However, the relationship between column and tables will not exist in this class.
  * 
@@ -86,6 +88,9 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
                        if(tmpStrArr.length==3){
                            tableName=tmpStrArr[0].trim().toUpperCase()+"."+tmpStrArr[1].trim().toUpperCase();
                            columnName=tmpStrArr[2];
+//                           if(tableName.indexOf("WMG_VD_FLAG_WORK_201308BL")>=0){
+//                               System.out.println(columnName);
+//                           }
                            tableList2.add(tmpStrArr[1].trim().toUpperCase());
                            tmpSet=tableList.get(tableName);
                            if(tmpSet==null){
@@ -463,17 +468,15 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
 		    System.out.println("\t"+s);
 		}
 		System.out.println();
-		
-		
+		Charset cs=StandardCharsets.US_ASCII;
+		//Scanner scanner;
 		File f=new File(inputFile);
 		BufferedWriter writer=PlsqlTableScanner.getWriter(reportFile);
         if(f.isFile()){
             System.out.println("File path: " + inputFile);
-            writer.write("File path: " + inputFile);         
-            InputStream is = new FileInputStream(inputFile);
-            Reader r = new InputStreamReader(is, "utf-8"); 
-            ANTLRInputStream input = new ANTLRInputStream(r);
-            PlSqlLexer lexer=new PlSqlLexer(input);
+            writer.write("File path: " + inputFile);  
+            CharStream csm=CharStreams.fromFileName(inputFile, cs);
+            PlSqlLexer lexer=new PlSqlLexer(csm);
             CommonTokenStream tokens=new CommonTokenStream(lexer);
             PlSqlParser parser=new PlSqlParser(tokens);
             ParseTree tree=parser.compilation_unit();       
@@ -484,7 +487,7 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
             writer.write("\n");
             walker.walk(extracter, tree);
             writer.flush();
-            writer.close();;
+            writer.close();
             
         }
         
@@ -497,10 +500,12 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
                 if(s.length()>1){
                     System.out.println(index+":"+s);
                     writer.write("("+(index+1)+".) " +"File path: "+ s); 
-                    InputStream is = new FileInputStream(s);
-                    Reader r=new InputStreamReader(is, "utf-8"); 
-                    ANTLRInputStream input = new ANTLRInputStream(r);
-                    PlSqlLexer lexer=new PlSqlLexer(input);
+                    //InputStream is = new FileInputStream(s);
+                    //Reader r=new InputStreamReader(is, "utf-8"); 
+                    CharStream csm=CharStreams.fromFileName(s, cs);
+                    //ANTLRInputStream input = new ANTLRInputStream(r);
+                    PlSqlLexer lexer=new PlSqlLexer(csm);
+                    //PlSqlLexer lexer=new PlSqlLexer(input);
                     CommonTokenStream tokens=new CommonTokenStream(lexer);
                     PlSqlParser parser=new PlSqlParser(tokens);
                     ParseTree tree=parser.compilation_unit();       
