@@ -141,7 +141,7 @@ DOWNSTREAM: 代表不同 Table 關係: A - HAVE -> COLUMN_A - downstream -> COLU
 - 一次只能執行 Table 關係檢視和 Table - Column 關係檢視其中一個, 建議可以利用換 neo4j database 來改變, 換句話說, 一個 database 存放 table 關係, 另外一個 database 存放 table-column 關係,  可以參考 [Stack Overflow](https://stackoverflow.com/questions/10888280/neo4j-how-to-switch-database) 了解如何使用
 - 目前知道有下列問題
 ```
-1. 如果欄位名稱是中文時, 解析可能會發生問題
+1. 如果欄位名稱是中文時, 解析可能會發生問題, 目前的 workaround 是在中文前後加上單引號('), 讓 Antlr 可以正確解析.
 2. 如果要解析的 PL/SQL 檔案是用 MS950 編碼, 也會發生問題, 比較保險的方式是所有的檔案都是 UTF-8 編碼, 包含要解析的 PL/SQL 檔案及 TABLE_OWBER+TABLE_NAME定義檔.
 ```
 ## On linux&Mac
