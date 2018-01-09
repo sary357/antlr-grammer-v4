@@ -71,7 +71,7 @@ A - downstream -> B: 代表從 Table A 出來的資料會影響 Table B, 也代�
 #### II. 顯示 Table 關係 - 進階版
 - 執行 PlsqlTableScanner 解析 (請注意 TABLE_OWNER+TABLE_NAME定義檔 理論上可以無限個)
 ```
-> java PlsqlTableScanner 需要處理的PL/SQL檔案絕對路徑 輸出檔案絕對路徑 TABLE_OWNER+TABLE_NAME定義檔1 TABLE_OWNER+TABLE_NAME定義檔2 TABLE_OWNER+TABLE_NAME定義檔3 TABLE_OWNER+TABLE_NAME定義檔4 ... TABLE_OWNER+TABLE_NAME定義檔n
+> java PlsqlTableScanner 需要處理的PL/SQL檔案絕對路徑或包含PL/SQL檔案的資料夾絕對路徑 輸出檔案絕對路徑 TABLE_OWNER+TABLE_NAME定義檔1 TABLE_OWNER+TABLE_NAME定義檔2 TABLE_OWNER+TABLE_NAME定義檔3 TABLE_OWNER+TABLE_NAME定義檔4 ... TABLE_OWNER+TABLE_NAME定義檔n
 ```
 - 範例:
 ```
