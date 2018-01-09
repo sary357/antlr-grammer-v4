@@ -182,7 +182,7 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
         
         if(tmpTableStack!=null && tmpTableStack.size()>0){
             for(String s: tmpTableStack){
-                //System.out.println("Temp table:\""+s+"\"");
+                System.out.println("Temp table:\""+s+"\"");
                 try{
                     this.bfw.write(s+"\n");
                 }catch(IOException e){
@@ -345,8 +345,8 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
                 if(tableList.containsKey(tableName.toUpperCase()) || tableList2.contains(tableName.toUpperCase())){
                     tableStack.push(DESTINATION+":"+ctx.getText());
                 }else{
-                    if(ctx.getText().indexOf("ods_system")<0)
-                        tmpTableStack.push("[TEMP_TABLE]:"+ctx.getText());// record temp table
+                    if(ctx.getText().indexOf("ods_system")<0 && ctx.getText().indexOf("ODS_SYSTEM")<0)
+                        tmpTableStack.push("[TEMP_TABLE(DESTINATION)]:"+ctx.getText());// record temp table
                 }
             }else {
                 tableName=ctx.getText();
@@ -368,8 +368,8 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
                     inSourceTable=true;
                 }
                 if(!inSourceTable){
-                    if(ctx.getText().indexOf("ods_system")<0)
-                        tmpTableStack.push("[TEMP_TABLE]:"+ctx.getText());
+                    if(ctx.getText().indexOf("ods_system")<0 && ctx.getText().indexOf("ODS_SYSTEM")<0)
+                        tmpTableStack.push("[TEMP_TABLE(SOURCE)]:"+ctx.getText());
                 }
             }
         }
@@ -468,7 +468,7 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
 		    System.out.println("\t"+s);
 		}
 		System.out.println();
-		Charset cs=StandardCharsets.US_ASCII;
+		Charset cs=StandardCharsets.UTF_8;
 		//Scanner scanner;
 		File f=new File(inputFile);
 		BufferedWriter writer=PlsqlTableScanner.getWriter(reportFile);
@@ -476,6 +476,7 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
             System.out.println("File path: " + inputFile);
             writer.write("File path: " + inputFile);  
             CharStream csm=CharStreams.fromFileName(inputFile, cs);
+           // CharStream csm=CharStreams.fromFileName(inputFile);
             PlSqlLexer lexer=new PlSqlLexer(csm);
             CommonTokenStream tokens=new CommonTokenStream(lexer);
             PlSqlParser parser=new PlSqlParser(tokens);
@@ -503,6 +504,7 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
                     //InputStream is = new FileInputStream(s);
                     //Reader r=new InputStreamReader(is, "utf-8"); 
                     CharStream csm=CharStreams.fromFileName(s, cs);
+                   // CharStream csm=CharStreams.fromFileName(s);
                     //ANTLRInputStream input = new ANTLRInputStream(r);
                     PlSqlLexer lexer=new PlSqlLexer(csm);
                     //PlSqlLexer lexer=new PlSqlLexer(input);

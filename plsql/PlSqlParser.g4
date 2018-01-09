@@ -1507,6 +1507,7 @@ atom
     | constant
     | general_element
     | '(' (subquery ')' subquery_operation_part* | expression_or_vector ')')
+    | standard_function
     ;
 
 expression_or_vector
