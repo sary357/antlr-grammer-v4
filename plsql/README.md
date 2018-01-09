@@ -142,7 +142,7 @@ DOWNSTREAM: 代表不同 Table 關係: A - HAVE -> COLUMN_A - downstream -> COLU
 - 目前知道有下列問題
 ```
 1. 如果欄位名稱是中文時, 解析可能會發生問題
-2. 如果要解析的 PL/SQL 檔案是用 MS950 編碼, 也會發生問題
+2. 如果要解析的 PL/SQL 檔案是用 MS950 編碼, 也會發生問題, 比較保險的方式是所有的檔案都是 UTF-8 編碼, 包含要解析的 PL/SQL 檔案及 TABLE_OWBER+TABLE_NAME定義檔.
 ```
 ## On linux&Mac
 ### TBD
