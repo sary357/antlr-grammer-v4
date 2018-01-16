@@ -10,10 +10,12 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.io.Reader;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
@@ -39,6 +41,7 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
   
     public static final String DESTINATION="[destination:insert][delete target:delete][update target table:update][merge into destination table: merge]"; // destination
     public static final String SOURCE="[source:insert][delete source table:delete][update source table: update][merge source table: merge]"; // source
+    public static final String CSV_FILE_FIELDS="SQL_FILE_NAME,SOURCE_TABLE,TARGET_TABLE";
     public static final String UTF_8="UTF-8";
     private Stack<String> tableStack=new Stack<String>();
     private Stack<String> statusStack=new Stack<String>();
@@ -52,6 +55,7 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
     private Map<String, Set<String>> tableList=null; // key: owner.table  value(a set): column
     private Set<String> tableList2=new HashSet<String>(); // table name only
     private boolean initialized=false;
+    private String sqlFileName;
     BufferedWriter bfw;
   //  private String neo4jHost;
  //   private String neo4jUsername;
@@ -62,10 +66,12 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
 //        this.parser=parser;
 //    }   
     
-    public PlsqlTableScanner(PlSqlParser parser, BufferedWriter w, String[] fileName){
+    public PlsqlTableScanner(PlSqlParser parser, BufferedWriter w,String sqlFile, String[] tableListFileName){
         this.parser=parser;
-        this.bfw=w;
-        this.ingestTableList(fileName);
+        this.bfw=w;   
+        File f=new File(sqlFile);
+        this.sqlFileName=f.getName();
+        this.ingestTableList(tableListFileName);
     }  
     
     private void ingestTableList(String[] fileName){
@@ -136,11 +142,11 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
                     tmpStr=tableStack.pop();
                    
                     System.out.println(tmpStr);
-                    try{
-                        this.bfw.write(tmpStr+"\n");
-                    }catch(IOException e){
-                        System.err.println("Fail to write the output file");
-                    }
+//                    try{
+//                        this.bfw.write(tmpStr+"\n");
+//                    }catch(IOException e){
+//                        System.err.println("Fail to write the output file");
+//                    }
                     if(tmpStr.startsWith(SOURCE))
                         upperStreamTableName.add(tmpStr.replace(SOURCE+":", ""));
                     else
@@ -163,10 +169,12 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
                 if(downStreamTableName!=null){
                    
                     for(String s: upperStreamTableName){
-                        System.out.println("merge (t:Table {Name:\""+s+"\"}) return t;");
-                        System.out.println("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
+//                        System.out.println("merge (t:Table {Name:\""+s+"\"}) return t;");
+//                        System.out.println("MATCH (t1:Table { Name: \""+s+"\" }),(t2:Table {Name: \""+downStreamTableName+"\" }) MERGE (t1)-[r:DOWNSTREAM]->(t2);");
+                        System.out.println("source table:"+s+"/destination table:"+downStreamTableName);
                         try{
-                            this.bfw.write("source table:"+s+"/destination table:"+downStreamTableName+"\n");
+                            this.bfw.write(this.sqlFileName+","+s+","+downStreamTableName+"\n"); // csv format
+                            
                         }catch(IOException e){
                             System.err.println("Fail to write the output file");
                         }
@@ -183,22 +191,24 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
         if(tmpTableStack!=null && tmpTableStack.size()>0){
             for(String s: tmpTableStack){
                 System.out.println("Temp table:\""+s+"\"");
-                try{
-                    this.bfw.write(s+"\n");
-                }catch(IOException e){
-                    System.err.println("Fail to write the output file");
-                }
+//                try{
+//                    this.bfw.write(s+"\n");
+//                }catch(IOException e){
+//                    System.err.println("Fail to write the output file");
+//                }
                
             }
             tmpTableStack.clear();
-        }else{
-            //System.out.println("No temp table");
-            try{
-                this.bfw.write("No temp file\n");
-            }catch(IOException e){
-                System.err.println("Fail to write the output file");
-            }
         }
+//        else{
+//            //System.out.println("No temp table");
+//            try{
+//                this.bfw.write("No temp file\n");
+//            }catch(IOException e){
+//                System.err.println("Fail to write the output file");
+//            }
+//        }
+        tmpTableStack.clear();
         try{
             this.bfw.flush();
         }catch(IOException e){
@@ -445,36 +455,48 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
 	 */
 	@SuppressWarnings("deprecation")
 	public static void main(String[] args) throws Exception{
+
 	    if(args.length<5){
 	        System.err.println("Missing necessary arguments \n");
-	        System.out.println("Parameters:java PlsqlTableScanner SQL_FILE REPORT_FILE TABLE_LIST_FILE1 TABLE_LIST_FILE2 ");
+	        System.out.println("Parameters:java PlsqlTableScanner SQL_FILE RESULT_CSV_FILE_PATH LOG_FILE_PATH TABLE_LIST_FILE1 TABLE_LIST_FILE2 ");
 	        System.out.println("The format of TABLE_LIST_FILEx: OWNER_NAME,TABLE_NAME|VIEW_NAME,COLUMN_NAME ");
 	        System.out.println("                            eg: ABC_REPL,CARDTYPE,YYYYMM");
 	        System.exit(1);;
 	    }
 	        
 		String inputFile=args[0];//"D:/fuming.Tsai/Documents/Tools/PortableGit/projects/grammars-v4/plsql/fubon/c1.sql";
-		String reportFile=args[1]; // write log in reportFile
-		String [] tableList=new String[args.length-2];
+		String reportFile=args[1]; // write csv in reportFile
+	    PrintStream console=System.out; // console output
+	    File logFile=new File(args[2]);
+	    FileOutputStream logFileOutputStream=new FileOutputStream(logFile);
+		String [] tableList=new String[args.length-3];
 		
-		for(int i=2; i<args.length; i++)
+		// set up table list
+		for(int i=3; i<args.length; i++)
 		    if(args[i]!=null)
-		        tableList[i-2]=args[i];
-		 System.out.println("------------------- START ----------------------");
-		System.out.println("Input SQL file path: " + inputFile);
-		System.out.println("Report file path: "+ reportFile);
+		        tableList[i-3]=args[i];
+		System.out.println("------------------- START ----------------------");
+		System.out.println("Input SQL file: " + inputFile);
+		System.out.println("CSV file: "+ reportFile);
+		System.out.println("Log file: "+args[2]);
 		System.out.println("Table defintion list: ");
 		for(String s: tableList){
 		    System.out.println("\t"+s);
 		}
 		System.out.println();
+
 		Charset cs=StandardCharsets.UTF_8;
 		//Scanner scanner;
 		File f=new File(inputFile);
 		BufferedWriter writer=PlsqlTableScanner.getWriter(reportFile);
+		
+		// use file as standard output and standard error output
+		PrintStream filePrintStream=new PrintStream(logFileOutputStream);
+		System.setErr(filePrintStream);
+		System.setOut(filePrintStream);
         if(f.isFile()){
             System.out.println("File path: " + inputFile);
-            writer.write("File path: " + inputFile);  
+            writer.write(CSV_FILE_FIELDS+"\n");  
             CharStream csm=CharStreams.fromFileName(inputFile, cs);
            // CharStream csm=CharStreams.fromFileName(inputFile);
             PlSqlLexer lexer=new PlSqlLexer(csm);
@@ -483,9 +505,9 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
             ParseTree tree=parser.compilation_unit();       
             ParseTreeWalker walker=new ParseTreeWalker();
             PlsqlTableScanner extracter=null;
-            extracter=new PlsqlTableScanner(parser, writer, tableList);          
+            extracter=new PlsqlTableScanner(parser, writer,inputFile, tableList);          
             System.out.println();
-            writer.write("\n");
+            //writer.write("\n");
             walker.walk(extracter, tree);
             writer.flush();
             writer.close();
@@ -497,10 +519,12 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
             String result=PlsqlTableScanner.getFileListName(inputFile);
             String[] inputArr=result.split("\n");
             int index=0;
+            writer.write(CSV_FILE_FIELDS+"\n");  
             for(String s: inputArr){
                 if(s.length()>1){
+                    index+=1;
                     System.out.println(index+":"+s);
-                    writer.write("("+(index+1)+".) " +"File path: "+ s); 
+                   // writer.write("("+(index+1)+".) " +"File path: "+ s); 
                     //InputStream is = new FileInputStream(s);
                     //Reader r=new InputStreamReader(is, "utf-8"); 
                     CharStream csm=CharStreams.fromFileName(s, cs);
@@ -513,12 +537,12 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
                     ParseTree tree=parser.compilation_unit();       
                     ParseTreeWalker walker=new ParseTreeWalker();
                     PlsqlTableScanner extracter=null;
-                    extracter=new PlsqlTableScanner(parser, writer, tableList);        
+                    extracter=new PlsqlTableScanner(parser, writer,s, tableList);        
                     System.out.println();
-                    writer.write("\n");
+                   // writer.write("\n");
                     walker.walk(extracter, tree);
                     
-                    index+=1;
+                    
                 }
             }
             writer.flush();
@@ -527,6 +551,9 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
             
         }
         
+        // use console as standard output and standard error output
+        System.setErr(console);
+        System.setOut(console);
         System.out.println("------------------- DONE -----------------------");
 	}
 
