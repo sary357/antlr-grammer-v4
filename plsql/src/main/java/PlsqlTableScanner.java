@@ -421,7 +421,7 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
     public static String getFileListName(String path){      
         File f=new File(path);
         if(f.isFile()){
-            if(f.getAbsolutePath().endsWith(".sql") || f.getAbsolutePath().endsWith(".SQL"))
+            if(f.getAbsolutePath().endsWith(".sql") || f.getAbsolutePath().endsWith(".SQL") || f.getAbsolutePath().endsWith(".prc"))
                 return f.getAbsolutePath();
             else
                 return null;
