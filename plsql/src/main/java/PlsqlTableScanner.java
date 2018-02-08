@@ -459,7 +459,7 @@ public class PlsqlTableScanner extends PlSqlParserBaseListener{
 	    if(args.length<5){
 	        System.err.println("Missing necessary arguments \n");
 	        System.out.println("Parameters:java PlsqlTableScanner SQL_FILE RESULT_CSV_FILE_PATH LOG_FILE_PATH TABLE_LIST_FILE1 TABLE_LIST_FILE2 ");
-	        System.out.println("The format of TABLE_LIST_FILEx: OWNER_NAME,TABLE_NAME|VIEW_NAME,COLUMN_NAME ");
+	        System.out.println("The format of TABLE_LIST_FILE: OWNER_NAME,TABLE_NAME|VIEW_NAME,COLUMN_NAME ");
 	        System.out.println("                            eg: ABC_REPL,CARDTYPE,YYYYMM");
 	        System.exit(1);;
 	    }

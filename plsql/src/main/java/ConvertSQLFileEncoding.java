@@ -38,7 +38,7 @@ public class ConvertSQLFileEncoding {
     }
     
     public static void convertSOLFileEncoding(String sourceFile, String sourceFileEncoding, String destinationFile, String destinationFileEncoding) throws Exception{
-        if(sourceFile.endsWith(".SQL") || sourceFile.endsWith(".sql")){
+        if(sourceFile.endsWith(".SQL") || sourceFile.endsWith(".sql") || sourceFile.endsWith(".prc")){
             BufferedReader br = new BufferedReader(
               //  new InputStreamReader(new FileInputStream("D:\\temp\\Dimensions\\BNK_D_WMG\\DM\\DM_WMG\\SP_KPI_CUST_LOCATION_WORK.SQL"), "Big5"));    
                     new InputStreamReader(new FileInputStream(sourceFile), sourceFileEncoding));
