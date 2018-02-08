@@ -138,14 +138,17 @@ public class ExcelInfoExtracter {
                                              targetTableCell!=null && 
                                                  targetTableCell.toString().length()>0
                                              ){
-                         if(sourceOwnerCell!=null && targetOwnerCell!=null)
-                             result.add(sourceOwnerCell.toString().toUpperCase()+"."+sourceTableCell.toString().toUpperCase()+","+targetOwnerCell.toString().toUpperCase()+"."+targetTableCell.toString().toUpperCase());
-                         if(sourceOwnerCell==null && targetOwnerCell!=null)
-                             result.add(sourceTableCell.toString().toUpperCase()+","+targetOwnerCell.toString().toUpperCase()+"."+targetTableCell.toString().toUpperCase());
-                         if(sourceOwnerCell!=null && targetOwnerCell==null)
-                             result.add(sourceOwnerCell.toString().toUpperCase()+"."+sourceTableCell.toString().toUpperCase()+","+targetTableCell.toString().toUpperCase());
-                         if(sourceOwnerCell==null && targetOwnerCell==null)
-                             result.add(sourceTableCell.toString().toUpperCase()+","+targetTableCell.toString().toUpperCase());
+                         if(sourceOwnerCell!=null && targetOwnerCell!=null){
+                             //System.out.println("GG: "+sourceOwnerCell.toString().toUpperCase()+"."+sourceTableCell.toString().toUpperCase()+","+targetOwnerCell.toString().toUpperCase()+"."+targetTableCell.toString().toUpperCase());
+                             
+                             
+                             result.add(cleanCellData(sourceOwnerCell)+"."+cleanCellData(sourceTableCell)+","+cleanCellData(targetOwnerCell)+"."+cleanCellData(targetTableCell));
+                         }else if(sourceOwnerCell==null && targetOwnerCell!=null)
+                             result.add(cleanCellData(sourceTableCell)+","+cleanCellData(targetOwnerCell)+"."+cleanCellData(targetTableCell));
+                         else if(sourceOwnerCell!=null && targetOwnerCell==null)
+                             result.add(cleanCellData(sourceOwnerCell)+"."+cleanCellData(sourceTableCell)+","+cleanCellData(targetTableCell));
+                         else if(sourceOwnerCell==null && targetOwnerCell==null)
+                             result.add(cleanCellData(sourceTableCell)+","+cleanCellData(targetTableCell));
                           
                         
                      }
@@ -164,6 +167,14 @@ public class ExcelInfoExtracter {
         return result;
     }
     
+    private static String cleanCellData(Cell data){
+        return cleanCellData(data.toString());
+    }
+    
+    private static String cleanCellData(String data){
+        return data.toUpperCase().replace(".", "");
+    }
+    
     public static void outputTableSet(String sqlPath, Set<String> tableSet, Writer outputWriter) throws IOException{
         File f=new File(sqlPath);
         Node parentNode, childNode;
@@ -175,13 +186,13 @@ public class ExcelInfoExtracter {
             String [] tmpArr=s.split(",");
             parentNode=new Node(tmpArr[0]);
             childNode=new Node(tmpArr[1]);
-            //System.out.println(fileName+","+s);
+            System.out.println(fileName+","+s);
             nmgr.addNodeRelation(parentNode, childNode);
         }
         //System.out.println("--------------------");
         String[] result=nmgr.toString().split("\n");
        // BufferedWriter w=getWriter(outputPath);
-        outputWriter.write("EXCEL_FILE_NAME,SOURCE_TABLE,TARGET_TABLE");
+        outputWriter.write("EXCEL_FILE_NAME,SOURCE_TABLE,TARGET_TABLE\n");
         for(String s: result){
             outputWriter.write(fileName+","+s+"\n");
             //System.out.println(fileName+","+s);
