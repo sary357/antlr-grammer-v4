@@ -17,15 +17,15 @@ ABC_REPL,CARDTYPE,CARD2
 ### 設定 CLASSPATH
 - 設定 CLASSPATH 環境變數, 在命令提示字元模式下輸入
 ```
-> set CLASSPATH="plsqltableparser.jar的絕對路徑";"antlr4-runtime-4.7.jar的絕對路徑";"hamcrest-core-1.3.jar的絕對路徑";"neo4j-java-driver-1.4.2.jar的絕對路徑"
+> set CLASSPATH="plsqltableparser.jar的絕對路徑";"deployment 下 jar 檔1 的絕對路徑";"deployment 下 jar 檔2 的絕對路徑";"..."
 ```
 - 範例: (假設plsqltableparser.jar放在D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment, 其他 jar 檔案放到 D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib )
 ```
-> set CLASSPATH=D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\antlr4-runtime-4.7.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\hamcrest-core-1.3.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\neo4j-java-driver-1.4.2.jar
+> set CLASSPATH=D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\antlr4-runtime-4.7.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\hamcrest-core-1.3.jar;D:\fuming.Tsai\Documents\Tools\PortableGit\projects\grammars-v4\plsql\deployment\plsqltableparser_lib\neo4j-java-driver-1.4.2.jar;.....
 ```
 ### 執行解析
 #### I. 轉換格式 (本步驟一定要執行, 否則處理中文會出現無法預期的問題)
-- 由於 Windows 上面的文字檔案是 Big5 編碼, Antlr 會無法正常解析, 所以我們需要將所有的 PL/SQL 檔案轉為 UTF-8 格式
+- 由於 Windows 上面的 PL/SQL 檔案是 Big5 編碼, Antlr 會無法正常解析, 所以我們需要將所有的 PL/SQL 檔案轉為 UTF-8 格式
 ```
 > java ConvertSQLFileEncoding 原始檔案絕對路徑或是含有PL/SQL檔案的目錄路徑 原始檔案編碼格式 目的檔案絕對路徑或是要放結果檔案的目錄路徑 目的檔案的編碼格式
 ```
@@ -107,8 +107,34 @@ Table defintion list:
 
 ```
 - 執行完後, 可以查看 `D:/temp/Dimension-2/result_3.csv` 和 `D:/temp/Dimension-2/result_3.log`
+- `result_3.csv`: 顯示每一個SQL檔案, 來源表格和目的地表格的關係, 格式: (SQL_FILE_NAME: PL/SQL 檔案名稱, SOURCE_TABLE: 來源 table, TARGET_TABLE: 目的地 table)
+```
+SQL_FILE_NAME, SOURCE_TABLE, TARGET_TABLE
+```
+- `result_3.log`: standard output
 
-#### IV. 顯示 Column - Table 關係 (會將結果放到 Neo4j server)
+#### IV. 抓取廠商交付 Excel 中來源表格和目的地表格的關係
+- 執行 ExcelInfoExtractor 解析 
+```
+> java ExcelInfoExtractor 需要處理的EXCEL檔案絕對路徑或包含EXCEL檔案的資料夾絕對路徑 輸出CSV檔案絕對路徑
+```
+- 範例:
+```
+> java ExcelInfoExtractor D:/資料分析應用科/暫存區/血緣分析表資料/tmp/血緣分析表/血緣分析 D:/資料分析應用科/暫存區/血緣分析表資料/tmp/血緣分析表/血緣分析表/report.csv
+
+Input Excel Path: D:/資料分析應用科/暫存區/血緣分析表資料/tmp/血緣分析表/血緣分析表
+Output File Path: D:/資料分析應用科/暫存區/血緣分析表資料/tmp/血緣分析表/血緣分析表/report.csv
+Processing file: D:\資料分析應用科\暫存區\血緣分析表資料\tmp\血緣分析表\血緣分析表\M1\DM_CC\DM_CC.SP_ABC_CCC_INITAL3A_程式規格書-附件_KEVIN_20170911V1.xls
+Processing file: D:\資料分析應用科\暫存區\血緣分析表資料\tmp\血緣分析表\血緣分析表\M1\DM_CC\DM_CC.SP_F_CC_DN_APPL_程式規格書.xls
+......
+Done
+```
+- `report.csv`: 顯示每一個廠商所交付的 EXCEL 的來源表格和目的地表格關係, 格式: (EXCEL_FILE_NAME: Excel 檔案名稱, SOURCE_TABLE: 來源 table, TARGET_TABLE: 目的地表格)
+```
+EXCEL_FILE_NAME,SOURCE_TABLE,TARGET_TABLE
+```
+
+#### V. 顯示 Column - Table 關係 (會將結果放到 Neo4j server)
 - 目前只能用來 mapping 如果 Column 是屬於同樣名稱的 table, 尚未能夠依照 PLSQL 所描述的關係建立關係
 - 執行 PlsqlColumnTableRelationParser 解析 (請注意 TABLE_OWNER+TABLE_NAME定義檔 理論上可以無限個)
 ```
